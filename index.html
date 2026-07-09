@@ -249,8 +249,8 @@
         </div>
       </div>
       <div class="form-group">
-        <label>2D Drawing (PDF)</label>
-        <input type="file" id="newRFQPdfHidden" accept="application/pdf" style="display:none;" onchange="onNewDrawingSelected(this)"/>
+        <label>2D Drawings (PDF)</label>
+        <input type="file" id="newRFQPdfHidden" accept="application/pdf" multiple style="display:none;" onchange="onNewDrawingSelected(this)"/>
         <div id="newDrawingUI"></div>
       </div>
       <div class="button-group">
@@ -431,7 +431,7 @@
   <div class="modal">
     <div class="modal-header"><h3>Edit RFQ</h3><button class="close-btn" onclick="closeRFQModal()">Close</button></div>
     <input type="hidden" id="editRFQIndex"/>
-    <input type="file" id="editRFQReplaceHidden" accept="application/pdf" style="display:none;" onchange="onReplaceDrawingSelected(this)"/>
+    <input type="file" id="editRFQAddHidden" accept="application/pdf" multiple style="display:none;" onchange="onAddDrawingSelected(this)"/>
     <div class="form-row">
       <div class="form-group"><label>Customer *</label><select id="editRFQCustomer" onchange="onEditRFQCustomerChange()"></select></div>
       <div class="form-group"><label>Project *</label><select id="editRFQProject"></select></div>
@@ -456,7 +456,7 @@
         </select>
       </div>
     </div>
-    <div class="form-group"><label>2D Drawing</label><div id="editPdfActions"></div></div>
+    <div class="form-group"><label>2D Drawings</label><div id="editPdfActions"></div></div>
     <div class="form-group">
       <label>Associated Suppliers</label>
       <div class="suppliers-row"><div id="rfqSuppliersChips"></div><button class="icon-btn" onclick="openAssocCenterModal(this)">+</button></div>
@@ -505,7 +505,7 @@ const defaultServices=["MACHINING","POWDER COATING","STAMPING","SURFACE TREATMEN
 const data={serviceTypes:[...defaultServices],customers:[],suppliers:[],rfqs:[],filters:{customer:"",project:"",status:"",pn:"",pnDescription:""}};
 const pnState={new:[],edit:[]};
 let currentRFQId=null; // Firestore doc id of RFQ being edited
-let newDrawingTemp={url:null,name:""};
+let newDrawingsTemp=[];
 let newLogoTemp={url:null,name:""};
 let editLogoTemp={url:null,name:""};
 let _attachMode=null,_attachRfqId=null,_attachSupplier=null,_attachLineIndex=null;
@@ -580,6 +580,7 @@ function startRealtimeListeners(){
       if(!Array.isArray(r.npiPos))r.npiPos=[];
       if(!r.suppliers)r.suppliers={};
       if(!Array.isArray(r.pns))r.pns=r.pn?[r.pn]:[];
+      if(!Array.isArray(r.drawings))r.drawings=[];
       data.rfqs.push(r);
     });
     data.rfqs.sort((a,b)=>new Date(b.updatedAt||0)-new Date(a.updatedAt||0));
@@ -703,53 +704,76 @@ window.pnKeydown=function(evt,ctx){if(evt.key==="Enter"||evt.key===","||evt.key=
 /* ═══════════════════════════════════════════
    DRAWING UI — Cloudinary based
 ═══════════════════════════════════════════ */
-function renderNewDrawingUI(){const box=document.getElementById("newDrawingUI");if(!newDrawingTemp.url){box.innerHTML='<button class="secondary" onclick="document.getElementById(\'newRFQPdfHidden\').click()">Upload 2D Drawing</button>';}else{box.innerHTML='<div class="upload-chip"><span class="filename">📄 '+newDrawingTemp.name+'</span><button class="chip-x" onclick="removeNewDrawing()">\u2715</button></div>';}}
-window.removeNewDrawing=function(){newDrawingTemp={url:null,name:""};document.getElementById("newRFQPdfHidden").value="";renderNewDrawingUI();};
+function renderNewDrawingUI(){
+  const box=document.getElementById("newDrawingUI");
+  let html='';
+  if(newDrawingsTemp.length){
+    html+=newDrawingsTemp.map((d,i)=>'<div class="upload-chip"><span class="filename">📄 '+d.name+'</span><button class="chip-x" onclick="removeNewDrawing('+i+')">\u2715</button></div>').join("");
+  }
+  html+='<button class="secondary" style="margin-top:4px;" onclick="document.getElementById(\'newRFQPdfHidden\').click()">'+(newDrawingsTemp.length?'➕ Add Drawing':'Upload 2D Drawing')+'</button>';
+  box.innerHTML=html;
+}
+window.removeNewDrawing=function(i){newDrawingsTemp.splice(i,1);document.getElementById("newRFQPdfHidden").value="";renderNewDrawingUI();};
 window.onNewDrawingSelected=async function(input){
-  const file=input.files[0];if(!file)return;
-  if(file.type!=="application/pdf"){toast("Only PDF files are allowed.","warn");input.value="";return;}
-  toast("Uploading drawing…");
-  try{const res=await uploadToCloudinary(file);newDrawingTemp={url:res.url,name:res.name};renderNewDrawingUI();toast("Drawing ready","ok");}
-  catch(e){toast("Upload failed","warn");}
+  const files=Array.from(input.files);input.value="";if(!files.length)return;
+  const invalid=files.filter(f=>f.type!=="application/pdf");
+  if(invalid.length){toast("Only PDF files are allowed.","warn");return;}
+  toast("Uploading drawing(s)…");
+  try{
+    const results=await Promise.all(files.map(f=>uploadToCloudinary(f)));
+    results.forEach(res=>newDrawingsTemp.push({url:res.url,name:res.name}));
+    renderNewDrawingUI();toast("Drawing(s) ready","ok");
+  }catch(e){toast("Upload failed","warn");}
 };
 
 function renderEditDrawingActions(rfq){
   const box=document.getElementById("editPdfActions");
-  if(!rfq.drawing2DUrl){box.innerHTML='<button class="secondary" onclick="document.getElementById(\'editRFQReplaceHidden\').click()">Upload</button>';return;}
-  box.innerHTML='<div class="upload-chip"><span class="filename">📄 '+(rfq.drawing2DName||"drawing.pdf")+'</span>'
-    +'<div style="display:flex;gap:6px;margin-left:6px;">'
-    +'<a href="'+rfq.drawing2DUrl+'" target="_blank"><button class="secondary" style="padding:4px 10px;font-size:12px;">Preview</button></a>'
-    +'<a href="'+rfq.drawing2DUrl+'" download="'+(rfq.drawing2DName||"drawing.pdf")+'"><button class="secondary" style="padding:4px 10px;font-size:12px;">Download</button></a>'
-    +'<button class="secondary" style="padding:4px 10px;font-size:12px;" onclick="document.getElementById(\'editRFQReplaceHidden\').click()">Replace</button>'
-    +'</div>'
-    +'<button class="chip-x" style="margin-left:4px;" onclick="deleteDrawingFromRFQ()">\u2715</button></div>';
+  const drawings=rfq.drawings||[];
+  let html='';
+  if(drawings.length){
+    html+=drawings.map((d,i)=>'<div class="upload-chip" style="margin-bottom:4px;"><span class="filename">📄 '+d.name+'</span>'
+      +'<div style="display:flex;gap:6px;margin-left:6px;">'
+      +'<a href="'+d.url+'" target="_blank"><button class="secondary" style="padding:4px 10px;font-size:12px;">Preview</button></a>'
+      +'<a href="'+d.url+'" download="'+d.name+'"><button class="secondary" style="padding:4px 10px;font-size:12px;">Download</button></a>'
+      +'</div>'
+      +'<button class="chip-x" style="margin-left:4px;color:#e53e3e;" onclick="deleteDrawingFromRFQ('+i+')">\u2715</button></div>').join("");
+  }
+  html+='<button class="secondary" style="margin-top:4px;" onclick="document.getElementById(\'editRFQAddHidden\').click()">➕ Add Drawing</button>';
+  box.innerHTML=html;
 }
 
-window.deleteDrawingFromRFQ=function(){
+window.deleteDrawingFromRFQ=async function(i){
   if(!confirm("Remove this drawing?"))return;
   const{rfq}=getRFQByModalIndex();
-  rfq.drawing2DUrl="";rfq.drawing2DName="";rfq.hasDrawing=false;rfq.updatedAt=new Date().toISOString();
-  saveRFQ(rfq);renderEditDrawingActions(rfq);toast("Drawing removed","ok");
+  if(!rfq.drawings)rfq.drawings=[];
+  rfq.drawings.splice(i,1);rfq.updatedAt=new Date().toISOString();
+  await saveRFQ(rfq);renderEditDrawingActions(rfq);toast("Drawing removed","ok");
 };
 
-window.onReplaceDrawingSelected=async function(input){
-  const file=input.files[0];input.value="";if(!file)return;
-  if(file.type!=="application/pdf")return toast("Only PDF files are allowed.","warn");
+window.onAddDrawingSelected=async function(input){
+  const files=Array.from(input.files);input.value="";if(!files.length)return;
+  const invalid=files.filter(f=>f.type!=="application/pdf");
+  if(invalid.length){toast("Only PDF files are allowed.","warn");return;}
   toast("Uploading…");
   try{
-    const res=await uploadToCloudinary(file);
+    const results=await Promise.all(files.map(f=>uploadToCloudinary(f)));
     const{rfq}=getRFQByModalIndex();
-    rfq.drawing2DUrl=res.url;rfq.drawing2DName=res.name;rfq.hasDrawing=true;rfq.updatedAt=new Date().toISOString();
-    await saveRFQ(rfq);renderEditDrawingActions(rfq);toast("Drawing updated","ok");
+    if(!rfq.drawings)rfq.drawings=[];
+    results.forEach(res=>rfq.drawings.push({url:res.url,name:res.name}));
+    rfq.updatedAt=new Date().toISOString();
+    await saveRFQ(rfq);renderEditDrawingActions(rfq);toast("Drawing(s) added","ok");
   }catch(e){toast("Upload failed","warn");}
 };
 
 function rfqCardDrawingActions(r){
-  if(!r.drawing2DUrl)return"";
-  return '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;" onclick="event.stopPropagation();">'
-    +'<span style="font-size:12px;color:var(--muted);">📄 '+(r.drawing2DName||"drawing.pdf")+'</span>'
-    +'<a href="'+r.drawing2DUrl+'" target="_blank"><button class="secondary">Preview PDF</button></a>'
-    +'<a href="'+r.drawing2DUrl+'" download><button class="secondary">Download PDF</button></a>'
+  const drawings=r.drawings||[];
+  if(!drawings.length)return"";
+  return '<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;" onclick="event.stopPropagation();">'
+    +drawings.map(d=>'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
+      +'<span style="font-size:12px;color:var(--muted);">📄 '+d.name+'</span>'
+      +'<a href="'+d.url+'" target="_blank"><button class="secondary">Preview PDF</button></a>'
+      +'<a href="'+d.url+'" download><button class="secondary">Download PDF</button></a>'
+      +'</div>').join("")
     +'</div>';
 }
 
@@ -886,13 +910,13 @@ window.createNewRFQ=async function(btn){
   const pnDescription=document.getElementById("newPNDescription").value.trim();const processNeeded=document.getElementById("newProcessNeeded").value.trim();
   const status=document.getElementById("newStatus").value;
   const newId=String(Date.now());const nowIso=new Date().toISOString();
-  const rfq={id:newId,customer,project,pns:[...pnState.new],pn:pnState.new[0]||"",sapPn,eau,pnDescription,processNeeded,status,drawing2DUrl:newDrawingTemp.url||"",drawing2DName:newDrawingTemp.name||"",hasDrawing:!!newDrawingTemp.url,suppliers:{},npiPos:[],createdAt:nowIso,updatedAt:nowIso};
+  const rfq={id:newId,customer,project,pns:[...pnState.new],pn:pnState.new[0]||"",sapPn,eau,pnDescription,processNeeded,status,drawings:[...newDrawingsTemp],suppliers:{},npiPos:[],createdAt:nowIso,updatedAt:nowIso};
   await saveRFQ(rfq);
   document.getElementById("newCustomer").value="";populateNewProject("");
   document.getElementById("newSapPN").value="";document.getElementById("newEAU").value="";
   document.getElementById("newPNDescription").value="";document.getElementById("newProcessNeeded").value="";
   document.getElementById("newStatus").value="PENDING";pnState.new=[];renderPNTags("new");
-  newDrawingTemp={url:null,name:""};renderNewDrawingUI();
+  newDrawingsTemp=[];renderNewDrawingUI();
   updateFilterSelects();switchTab("rfq-list");
   toast("RFQ created ✓","ok");
 };
@@ -923,6 +947,8 @@ function renderRFQList(){
 window.openRFQModal=function(rfqId){
   const r=data.rfqs.find(x=>String(x.id)===String(rfqId));if(!r)return;
   if(!Array.isArray(r.npiPos))r.npiPos=[];if(!r.suppliers)r.suppliers={};if(!Array.isArray(r.pns))r.pns=r.pn?[r.pn]:[];
+  if(r.drawing2DUrl&&(!r.drawings||r.drawings.length===0)){r.drawings=[{url:r.drawing2DUrl,name:r.drawing2DName||"drawing.pdf"}];}
+  if(!Array.isArray(r.drawings))r.drawings=[];
   document.getElementById("editRFQIndex").value=String(r.id);
   populateEditRFQCustomer(r.customer);populateEditRFQProject(r.customer,r.project);
   document.getElementById("editRFQSapPN").value=r.sapPn||"";document.getElementById("editRFQEAU").value=r.eau||"";
