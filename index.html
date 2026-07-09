@@ -713,11 +713,11 @@ function renderNewDrawingUI(){
   html+='<button class="secondary" style="margin-top:4px;" onclick="document.getElementById(\'newRFQPdfHidden\').click()">'+(newDrawingsTemp.length?'➕ Add Drawing':'Upload 2D Drawing')+'</button>';
   box.innerHTML=html;
 }
-window.removeNewDrawing=function(i){newDrawingsTemp.splice(i,1);document.getElementById("newRFQPdfHidden").value="";renderNewDrawingUI();};
+window.removeNewDrawing=function(i){newDrawingsTemp.splice(i,1);renderNewDrawingUI();};
+function validatePdfFiles(files){return files.every(f=>f.type==="application/pdf");}
 window.onNewDrawingSelected=async function(input){
   const files=Array.from(input.files);input.value="";if(!files.length)return;
-  const invalid=files.filter(f=>f.type!=="application/pdf");
-  if(invalid.length){toast("Only PDF files are allowed.","warn");return;}
+  if(!validatePdfFiles(files)){toast("Only PDF files are allowed.","warn");return;}
   toast("Uploading drawing(s)…");
   try{
     const results=await Promise.all(files.map(f=>uploadToCloudinary(f)));
@@ -736,7 +736,7 @@ function renderEditDrawingActions(rfq){
       +'<a href="'+d.url+'" target="_blank"><button class="secondary" style="padding:4px 10px;font-size:12px;">Preview</button></a>'
       +'<a href="'+d.url+'" download="'+d.name+'"><button class="secondary" style="padding:4px 10px;font-size:12px;">Download</button></a>'
       +'</div>'
-      +'<button class="chip-x" style="margin-left:4px;color:#e53e3e;" onclick="deleteDrawingFromRFQ('+i+')">\u2715</button></div>').join("");
+      +'<button class="chip-x" style="margin-left:4px;color:var(--excl);" onclick="deleteDrawingFromRFQ('+i+')">\u2715</button></div>').join("");
   }
   html+='<button class="secondary" style="margin-top:4px;" onclick="document.getElementById(\'editRFQAddHidden\').click()">➕ Add Drawing</button>';
   box.innerHTML=html;
@@ -752,8 +752,7 @@ window.deleteDrawingFromRFQ=async function(i){
 
 window.onAddDrawingSelected=async function(input){
   const files=Array.from(input.files);input.value="";if(!files.length)return;
-  const invalid=files.filter(f=>f.type!=="application/pdf");
-  if(invalid.length){toast("Only PDF files are allowed.","warn");return;}
+  if(!validatePdfFiles(files)){toast("Only PDF files are allowed.","warn");return;}
   toast("Uploading…");
   try{
     const results=await Promise.all(files.map(f=>uploadToCloudinary(f)));
