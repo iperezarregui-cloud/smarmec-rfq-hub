@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Migrate Data — Smarmec RFQ Hub</title>
+  <style>
+    :root {
+      --brand: #9A3B26;
+      --brand-d: #7E2F1E;
+      --brand-soft: #F4E9E5;
+      --brand-soft2: #EBD8D4;
+      --ok: #2E7D52;
+      --ok-soft: #E8F5EE;
+      --warn: #B7791F;
+      --warn-soft: #FEF9EE;
+      --excl: #C0392B;
+      --excl-soft: #FDECEA;
+      --ink: #2A2523;
+      --ink-2: #6C625D;
+      --muted: #948A84;
+      --line: #E7E1DB;
+      --line-2: #D8D0C9;
+      --bg: #FAF9F7;
+      --panel: #FFFFFF;
+      --gray-soft: #EFEFF0;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 16px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 40px 36px;
+      width: min(520px, 100%);
+      box-shadow: 0 8px 40px rgba(42,37,35,.12);
+    }
+
+    /* ── Logo ── */
+    .logo-area {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 8px;
+    }
+    .logo-text {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -.01em;
+      color: var(--brand);
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    /* ── Form ── */
+    .form-group { margin-bottom: 14px; }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 11px;
+      font-weight: 720;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--muted);
+    }
+    input[type="email"], input[type="password"] {
+      width: 100%;
+      border: 1px solid var(--line-2);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+      background: #fff;
+      color: var(--ink);
+      font-family: inherit;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px var(--brand-soft);
+    }
+
+    /* ── Buttons ── */
+    button {
+      width: 100%;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      font-family: inherit;
+      font-size: 14px;
+      padding: 12px 20px;
+      transition: background .15s, transform .1s;
+    }
+    button:hover:not(:disabled) { transform: translateY(-1px); }
+    button:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--brand-d); }
+    .btn-migrate {
+      background: var(--brand);
+      color: #fff;
+      font-size: 15px;
+      padding: 14px 20px;
+      border-radius: 10px;
+    }
+    .btn-migrate:hover:not(:disabled) { background: var(--brand-d); }
+
+    /* ── Error/info banners ── */
+    .banner {
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-bottom: 14px;
+      display: none;
+    }
+    .banner.error { background: var(--excl-soft); border: 1px solid #f0c0bc; color: var(--excl); display: block; }
+    .banner.success { background: var(--ok-soft); border: 1px solid #a8d5bb; color: var(--ok); display: block; }
+
+    /* ── Sections ── */
+    #loginSection, #migrateSection { display: none; }
+    #loginSection.active, #migrateSection.active { display: block; }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 24px 0;
+    }
+
+    /* ── User pill ── */
+    .user-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--brand-soft);
+      border: 1px solid var(--brand-soft2);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+    .user-info span { color: var(--ink-2); }
+    .user-info strong { color: var(--brand); }
+    .btn-logout {
+      background: none;
+      border: 1px solid var(--brand-soft2);
+      color: var(--brand);
+      padding: 5px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+      width: auto;
+      font-weight: 600;
+    }
+    .btn-logout:hover:not(:disabled) { background: var(--brand-soft2); transform: none; }
+
+    /* ── Progress log ── */
+    #progressWrap { display: none; margin-top: 20px; }
+    #progressWrap.visible { display: block; }
+    .progress-log {
+      background: var(--gray-soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 12.5px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      max-height: 260px;
+      overflow-y: auto;
+      color: var(--ink-2);
+      line-height: 1.7;
+    }
+    .log-ok { color: var(--ok); }
+    .log-err { color: var(--excl); }
+    .log-muted { color: var(--muted); }
+
+    /* ── Summary ── */
+    .summary-box {
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-top: 18px;
+      display: none;
+    }
+    .summary-box.done { display: block; background: var(--ok-soft); border: 1px solid #a8d5bb; }
+    .summary-box.done p { color: var(--ok); font-size: 15px; font-weight: 700; }
+    .summary-box.done small { color: var(--ink-2); font-size: 12px; }
+  </style>
+</head>
+<body>
+<div class="card">
+
+  <!-- Logo -->
+  <div class="logo-area">
+    <!-- Smarmec SVG logo -->
+    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="40" height="40" rx="10" fill="#9A3B26"/>
+      <path d="M10 27 C10 27 13 13 20 13 C27 13 30 27 30 27" stroke="#fff" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+      <circle cx="20" cy="20" r="3.5" fill="#fff"/>
+    </svg>
+    <span class="logo-text">Smarmec RFQ Hub</span>
+  </div>
+  <p class="subtitle">Herramienta de migración de datos a Firebase</p>
+
+  <!-- Login Section -->
+  <div id="loginSection" class="active">
+    <div id="loginError" class="banner"></div>
+    <div class="form-group">
+      <label for="emailInput">Email</label>
+      <input type="email" id="emailInput" placeholder="usuario@ejemplo.com" autocomplete="email" />
+    </div>
+    <div class="form-group">
+      <label for="passwordInput">Contraseña</label>
+      <input type="password" id="passwordInput" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+    <button class="btn-primary" id="loginBtn" onclick="doLogin()">Iniciar sesión</button>
+  </div>
+
+  <!-- Migrate Section -->
+  <div id="migrateSection">
+    <div class="user-info">
+      <span>Sesión iniciada como <strong id="userEmailDisplay"></strong></span>
+      <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
+    </div>
+
+    <p style="font-size:13px;color:var(--ink-2);margin-bottom:18px;line-height:1.6;">
+      Este botón sube a Firestore:<br/>
+      &bull; El documento <code>settings</code> en la colección <code>app</code><br/>
+      &bull; Los <strong>26 RFQs</strong> en la colección <code>rfqs</code><br/>
+      Los documentos existentes serán <strong>sobreescritos</strong>.
+    </p>
+
+    <div id="migrateError" class="banner"></div>
+
+    <button class="btn-migrate" id="migrateBtn" onclick="doMigrate()">🚀 Migrar datos a Firebase</button>
+
+    <div id="progressWrap">
+      <div class="progress-log" id="progressLog"></div>
+    </div>
+
+    <div class="summary-box" id="summaryBox">
+      <p id="summaryText"></p>
+      <small id="summaryDetail"></small>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ── Firebase config ──────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyBAwnkMckOgcFzt1lZsZh4HS9qnCcYQmxg",
+  authDomain: "smarmec-npi-rfq-hub.firebaseapp.com",
+  projectId: "smarmec-npi-rfq-hub",
+  storageBucket: "smarmec-npi-rfq-hub.firebasestorage.app",
+  messagingSenderId: "170921266072",
+  appId: "1:170921266072:web:3b064672402286f9c339ed"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+// ── Migration data ───────────────────────────────────────────────────────────
+const SETTINGS = {
+  serviceTypes: [
+    "INJECTION","MACHINING","MEASUREMENT SERVICES","PACKAGING","PALLET",
+    "POWDER COATING","SILKSCREEN","STAMPING","SURFACE TREATMENT","TRADING"
+  ],
+  customers: [
+    {
+      name: "HP",
+      logo: "",
+      projects: ["IKA","SIMBA"]
+    },
+    {
+      name: "CHARGEPOINT",
+      logo: "",
+      projects: ["JUPITER"]
+    }
+  ],
+  suppliers: [
+    {"name":"GLOBAL","location":"Johor Bahru","contact":"Mr Lau","email":"globalmcl8@gmail.com","phone":"","services":["POWDER COATING"]},
+    {"name":"LEE HENG","location":"JOHOR BAHRU","contact":"Nadia","email":"","phone":"","services":["MACHINING"]},
+    {"name":"GAIN MIRAGE","location":"JOHOR BAHRU","contact":"Ms Tan","email":"","phone":"","services":["MACHINING"]},
+    {"name":"DONGGUAN LANXIN","location":"CHINA","contact":"","email":"","phone":"","services":["TRADING"]},
+    {"name":"UKL","location":"JOHOR BAHRU","contact":"Ms. Wasilah","email":"sales3@ukl.com.my","phone":"","services":["POWDER COATING","SILKSCREEN","SURFACE TREATMENT"]},
+    {"name":"CAM-TOOLS PRECISION","location":"JB","contact":"","email":"","phone":"","services":["MACHINING"]},
+    {"name":"IV-TECHMOULD","location":"CHINA","contact":"","email":"","phone":"","services":["MACHINING"]},
+    {"name":"WANG LIN","location":"CHINA","contact":"","email":"","phone":"","services":["INJECTION"]},
+    {"name":"GLOBAL LIGHTNING","location":"-","contact":"","email":"","phone":"","services":["TRADING"]},
+    {"name":"GISTEC","location":"Singapore","contact":"","email":"","phone":"","services":["TRADING"]},
+    {"name":"Alloy Tools","location":"Johor Bahru","contact":"Ivan Chua","email":"ivan.chua@alloytool.my","phone":"","services":["MEASUREMENT SERVICES"]},
+    {"name":"PLL PACKAGING","location":"JB","contact":"Justina","email":"justina@pllpac.com.my","phone":"","services":["PACKAGING"]},
+    {"name":"SKE TIMBER","location":"JB","contact":"Mr Yong","email":"sketimber@gmail.com","phone":"","services":["PALLET"]}
+  ]
+};
+
+const RFQS = [
+  {"id":1783479246562,"customer":"CHARGEPOINT","project":"JUPITER","pns":["20-246655-01","20-246656-01"],"pn":"20-246655-01","sapPn":"","eau":"","pnDescription":"FUTUREWAY SR1140F - ADHESIVE BACK 3M 9495LE T2 X 5MM","processNeeded":"","status":"QUOTED","drawing2DName":"","hasDrawing":false,"suppliers":{"DONGGUAN LANXIN":[{"moq":"5000 meters","price":"0.26","leadTime":"7w","incoterm":"EXW China","note":""}]},"npiPos":[],"createdAt":"2026-07-08T02:54:06.562Z","updatedAt":"2026-07-09T01:30:57.297Z"},
+  {"id":1783479403112,"customer":"CHARGEPOINT","project":"JUPITER","pns":["21-243854-01"],"pn":"21-243854-01","sapPn":"","eau":"","pnDescription":"","processNeeded":"Sherwin Williams PC + Sikscreen","status":"QUOTED","drawing2DName":"","hasDrawing":false,"suppliers":{"UKL":[{"moq":"5","price":"29.50","leadTime":"-","incoterm":"DAP","note":"Silkscreen + PC"},{"moq":"50","price":"18.30","leadTime":"-","incoterm":"DAP","note":""}]},"npiPos":[],"createdAt":"2026-07-08T02:56:43.112Z","updatedAt":"2026-07-09T01:31:35.729Z"},
+  {"id":1783479613008,"customer":"CHARGEPOINT","project":"JUPITER","pns":["21-002616-01"],"pn":"21-002616-01","sapPn":"","eau":"","pnDescription":"SHEET METAL, AUO DISPLAY MOUNT BRACKET, RIGHT","processNeeded":"Powder coat Akzonobel Interpon 600 Black","status":"QUOTED","drawing2DName":"","hasDrawing":false,"suppliers":{"GLOBAL":[{"moq":"50","price":"1 USD","leadTime":"4w","incoterm":"DAP","note":""}]},"npiPos":[],"createdAt":"2026-07-08T03:00:13.008Z","updatedAt":"2026-07-09T01:32:03.488Z"},
+  {"id":1783479660162,"customer":"CHARGEPOINT","project":"JUPITER","pns":["21-002615-01"],"pn":"21-002615-01","sapPn":"","eau":"","pnDescription":"SHEET METAL, AUO DISPLAY MOUNT BRACKET, LEFT","processNeeded":"Powder Coat Akzonobel Interpon 600 Black","status":"QUOTED","drawing2DName":"","hasDrawing":false,"suppliers":{"GLOBAL":[{"moq":"50","price":"1 USD","leadTime":"4","incoterm":"DAP","note":""}]},"npiPos":[],"createdAt":"2026-07-08T03:01:00.162Z","updatedAt":"2026-07-09T01:31:55.741Z"},
+  {"id":1783479956011,"customer":"CHARGEPOINT","project":"JUPITER","pns":["20-248553-01"],"pn":"20-248553-01","sapPn":"","eau":"","pnDescription":"FUTUREWAY SR1140S- ADHESIVE BACK 3M 9495 LE T2 X 5MM","processNeeded":"","status":"PENDING","drawing2DName":"","hasDrawing":false,"suppliers":{},"npiPos":[],"createdAt":"2026-07-08T03:05:56.011Z","updatedAt":"2026-07-09T00:41:22.881Z"},
+  {"id":1783479991758,"customer":"CHARGEPOINT","project":"JUPITER","pns":["20-003387-02","20-003393-02"],"pn":"20-003387-02","sapPn":"","eau":"","pnDescription":"FUTUREWAY SR1140F - ADHESIVE BACK 3M 9495LE T2 X 6MM","processNeeded":"","status":"QUOTED","drawing2DName":"Futureway®SRL-1140F TDS V6.1 EN.pdf","hasDrawing":true,"suppliers":{"DONGGUAN LANXIN":[{"moq":"4k meters","price":"0.314","leadTime":"7w","incoterm":"EXW China","note":""}]},"npiPos":[],"createdAt":"2026-07-08T03:06:31.758Z","updatedAt":"2026-07-09T00:40:29.581Z"},
+  {"id":1783480204143,"customer":"CHARGEPOINT","project":"JUPITER","pns":["20-003388-02, 20-003390-02, 20-003394-01, 20-003396-02"],"pn":"20-003388-02, 20-003390-02, 20-003394-01, 20-003396-02","sapPn":"","eau":"","pnDescription":"FUTUREWAY SR1140F - ADHESIVE BACK 3M 9495LE T2.6 X 10MM","processNeeded":"","status":"QUOTED","drawing2DName":"Futureway®SRL-1140F TDS V6.1 EN.pdf","hasDrawing":true,"suppliers":{"DONGGUAN LANXIN":[{"moq":"2.6k meters","price":"0.479","leadTime":"7w","incoterm":"EXW China","note":""}]},"npiPos":[],"createdAt":"2026-07-08T03:10:04.143Z","updatedAt":"2026-07-09T00:40:34.292Z"},
+  {"id":1783480334519,"customer":"CHARGEPOINT","project":"JUPITER","pns":["20-003389-02, 20-003391-02, 20-003395-01, 20-003397-02"],"pn":"20-003389-02, 20-003391-02, 20-003395-01, 20-003397-02","sapPn":"","eau":"","pnDescription":"FUTUREWAY SR1140F - ADHESIVE BACK 3M 9495LE T4 X 7MM","processNeeded":"","status":"QUOTED","drawing2DName":"Futureway®SRL-1140F TDS V6.1 EN.pdf","hasDrawing":true,"suppliers":{"DONGGUAN LANXIN":[{"moq":"2k meters","price":"0.386","leadTime":"7w","incoterm":"EXW China","note":""}]},"npiPos":[],"createdAt":"2026-07-08T03:12:14.519Z","updatedAt":"2026-07-09T00:40:38.734Z"},
+  {"id":1783480394731,"customer":"CHARGEPOINT","project":"JUPITER","pns":["20-003386-02"],"pn":"20-003386-02","sapPn":"","eau":"","pnDescription":"SILICONE RUBBER, SHORE 60A, UL94-V2","processNeeded":"","status":"QUOTED","drawing2DName":"","hasDrawing":false,"suppliers":{"DONGGUAN LANXIN":[{"moq":"5k meters","price":"0.083","leadTime":"7w","incoterm":"EXW China","note":""}]},"npiPos":[],"createdAt":"2026-07-08T03:13:14.731Z","updatedAt":"2026-07-09T00:40:41.884Z"},
+  {"id":1783480594840,"customer":"CHARGEPOINT","project":"JUPITER","pns":["20-231786-03","20-231787-03"],"pn":"20-231786-03","sapPn":"","eau":"50k meters","pnDescription":"TRIMLOCK A 3100B3X1/8C","processNeeded":"https://www.mscdirect.com/product/details/68943661","status":"PENDING","drawing2DName":"20-231786-03-02.pdf","hasDrawing":true,"suppliers":{},"npiPos":[],"createdAt":"2026-07-08T03:16:34.840Z","updatedAt":"2026-07-09T00:41:18.088Z"},
+  {"id":1783481541293,"customer":"CHARGEPOINT","project":"JUPITER","pns":["20-247949-01"],"pn":"20-247949-01","sapPn":"","eau":"","pnDescription":"FUTUREWAY SR1140S - ADHESIVE BACK 3M 9495 LE T2 SPECIAL FORM","processNeeded":"","status":"PENDING","drawing2DName":"","hasDrawing":false,"suppliers":{},"npiPos":[],"createdAt":"2026-07-08T03:32:21.293Z","updatedAt":"2026-07-09T00:41:20.495Z"},
+  {"id":1783481717078,"customer":"CHARGEPOINT","project":"JUPITER","pns":["22-236677-01"],"pn":"22-236677-01","sapPn":"","eau":"10k per yer","pnDescription":"MOLD, MODULE SCREW INSULATOR","processNeeded":"","status":"QUOTED","drawing2DName":"22-236677-01-01.pdf","hasDrawing":true,"suppliers":{"CAM-TOOLS PRECISION":[{"moq":"2000","price":"5.35","leadTime":"4w","incoterm":"DAP","note":""}],"IV-TECHMOULD":[{"moq":"2k","price":"3.05","leadTime":"7w","incoterm":"EXW CHINA","note":""}]},"npiPos":[],"createdAt":"2026-07-08T03:35:17.078Z","updatedAt":"2026-07-09T00:40:26.243Z"},
+  {"id":1783483996427,"customer":"CHARGEPOINT","project":"JUPITER","pns":["22-236245-04"],"pn":"22-236245-04","sapPn":"","eau":"","pnDescription":"HINGE, JUPITER, FRAME LEAF, INTAKE DOOR","processNeeded":"","status":"QUOTED","drawing2DName":"","hasDrawing":false,"suppliers":{"GAIN MIRAGE":[{"moq":"150","price":"18.50","leadTime":"6w","incoterm":"DAP","note":""}],"CAM-TOOLS PRECISION":[{"moq":"150","price":"27.125","leadTime":"4w","incoterm":"DAP","note":""}]},"npiPos":[],"createdAt":"2026-07-08T04:13:16.427Z","updatedAt":"2026-07-09T00:40:23.004Z"},
+  {"id":1783484017944,"customer":"CHARGEPOINT","project":"JUPITER","pns":["22-236313-04"],"pn":"22-236313-04","sapPn":"","eau":"","pnDescription":"HINGE, JUPITER, FRAME LEAF, EXHAUST DOOR","processNeeded":"","status":"QUOTED","drawing2DName":"","hasDrawing":false,"suppliers":{"GAIN MIRAGE":[{"moq":"150","price":"18.5","leadTime":"6w","incoterm":"DAP","note":""}],"CAM-TOOLS PRECISION":[{"moq":"150","price":"27.13","leadTime":"4w","incoterm":"DAP","note":""}]},"npiPos":[],"createdAt":"2026-07-08T04:13:37.944Z","updatedAt":"2026-07-09T00:40:19.283Z"},
+  {"id":1783484040326,"customer":"CHARGEPOINT","project":"JUPITER","pns":["22-236244-04"],"pn":"22-236244-04","sapPn":"","eau":"","pnDescription":"HINGE, JUPITER, DOOR LEAF, INTAKE DOOR","processNeeded":"","status":"QUOTED","drawing2DName":"","hasDrawing":false,"suppliers":{"GAIN MIRAGE":[{"moq":"150","price":"13.56","leadTime":"6w","incoterm":"DAP","note":""}],"CAM-TOOLS PRECISION":[{"moq":"150","price":"18.79","leadTime":"4w","incoterm":"DAP","note":""}]},"npiPos":[],"createdAt":"2026-07-08T04:14:00.326Z","updatedAt":"2026-07-09T00:40:16.785Z"},
+  {"id":1783484071362,"customer":"CHARGEPOINT","project":"JUPITER","pns":["22-245613-01"],"pn":"22-245613-01","sapPn":"","eau":"2k","pnDescription":"HINGE, JUPITER, LONG DOOR LEAF, INTAKE DOOR","processNeeded":"","status":"PENDING","drawing2DName":"22-245613-01.pdf","hasDrawing":true,"suppliers":{},"npiPos":[],"createdAt":"2026-07-08T04:14:31.362Z","updatedAt":"2026-07-09T00:40:59.180Z"},
+  {"id":1783484088432,"customer":"CHARGEPOINT","project":"JUPITER","pns":["22-245650-01"],"pn":"22-245650-01","sapPn":"","eau":"2k","pnDescription":"HINGE, JUPITER, FRAME UPPER LEAF, EXHAUST DOOR","processNeeded":"","status":"PENDING","drawing2DName":"22-245650-01.pdf","hasDrawing":true,"suppliers":{},"npiPos":[],"createdAt":"2026-07-08T04:14:48.432Z","updatedAt":"2026-07-09T00:41:04.318Z"},
+  {"id":1783484103297,"customer":"CHARGEPOINT","project":"JUPITER","pns":["22-245651-01"],"pn":"22-245651-01","sapPn":"","eau":"2k","pnDescription":"HINGE, JUPITER, FRAME UPPER LEAF, INTAKE DOOR","processNeeded":"","status":"PENDING","drawing2DName":"22-245651-01.pdf","hasDrawing":true,"suppliers":{},"npiPos":[],"createdAt":"2026-07-08T04:15:03.297Z","updatedAt":"2026-07-09T00:41:07.249Z"},
+  {"id":1783484120008,"customer":"CHARGEPOINT","project":"JUPITER","pns":["22-236312-04"],"pn":"22-236312-04","sapPn":"","eau":"4k","pnDescription":"HINGE, JUPITER, DOOR LEAF, EXHAUST DOOR","processNeeded":"","status":"PENDING","drawing2DName":"22-236312-04.pdf","hasDrawing":true,"suppliers":{},"npiPos":[],"createdAt":"2026-07-08T04:15:20.008Z","updatedAt":"2026-07-09T00:41:09.666Z"},
+  {"id":1783484137047,"customer":"CHARGEPOINT","project":"JUPITER","pns":["22-245636-01"],"pn":"22-245636-01","sapPn":"","eau":"2k","pnDescription":"HINGE, JUPITER, LONG DOOR LEAF, EXHAUST DOOR","processNeeded":"","status":"PENDING","drawing2DName":"22-245636-01.pdf","hasDrawing":true,"suppliers":{"WANG LIN":[{"moq":"300","price":"4.25","leadTime":"6 + delivery","incoterm":"DAP","note":""},{"moq":"600","price":"4.00","leadTime":"6 + delivery","incoterm":"DAP","note":""},{"moq":"1200","price":"3.825","leadTime":"6 + delivery","incoterm":"DAP","note":""}]},"npiPos":[],"createdAt":"2026-07-08T04:15:37.047Z","updatedAt":"2026-07-09T00:41:12.912Z"},
+  {"id":1783484849887,"customer":"CHARGEPOINT","project":"JUPITER","pns":["22-226229-02"],"pn":"22-226229-02","sapPn":"","eau":"","pnDescription":"SOL GUIDE, JUPITER","processNeeded":"Plastic injection","status":"QUOTED","drawing2DName":"","hasDrawing":false,"suppliers":{"WANG LIN":[{"moq":"300","price":"4.25$","leadTime":"6 + delivery","incoterm":"DAP","note":""},{"moq":"600","price":"4.00$","leadTime":"6 + delivery","incoterm":"DAP","note":""},{"moq":"1200","price":"3.83$","leadTime":"6 + delivery","incoterm":"DAP","note":""}]},"npiPos":[],"createdAt":"2026-07-08T04:27:29.887Z","updatedAt":"2026-07-09T01:32:09.684Z"},
+  {"id":1783485410054,"customer":"CHARGEPOINT","project":"JUPITER","pns":["22-226232-04"],"pn":"22-226232-04","sapPn":"","eau":"","pnDescription":"LUNA GUIDE, JUPITER","processNeeded":"","status":"QUOTED","drawing2DName":"","hasDrawing":false,"suppliers":{"WANG LIN":[{"moq":"300","price":"4.25","leadTime":"6 + delivery","incoterm":"DAP","note":""},{"moq":"600","price":"4.00","leadTime":"6 + delivery","incoterm":"DAP","note":""},{"moq":"1200","price":"3.85","leadTime":"6 + delivery","incoterm":"DAP","note":""}]},"npiPos":[],"createdAt":"2026-07-08T04:36:50.054Z","updatedAt":"2026-07-09T01:32:14.281Z"},
+  {"id":1783489209889,"customer":"CHARGEPOINT","project":"JUPITER","pns":["12-237074-01"],"pn":"12-237074-01","sapPn":"","eau":"","pnDescription":"GROUNDING STRAP, JUPITER, DOORS","processNeeded":"https://www.nvent.com/en-us/eriflex/products/efscpi35-300-12#Details","status":"QUOTED","drawing2DName":"","hasDrawing":false,"suppliers":{"GLOBAL LIGHTNING":[{"moq":"50","price":"17.75","leadTime":"12w","incoterm":"EXW KL","note":""},{"moq":"200","price":"16.28","leadTime":"12w","incoterm":"EXW KL","note":""},{"moq":"500","price":"14.3","leadTime":"12w","incoterm":"EXW KL","note":""}],"GISTEC":[{"moq":"50","price":"20.35","leadTime":"18w","incoterm":"EXW SGP","note":""}]},"npiPos":[{"supplier":"GLOBAL LIGHTNING","poNumber":"PO202602237","qty":"20","price":"RM72*20 = 1440","poDate":"2026-03-11","eta":"2026-06-30","received":true,"note":"Bought 20 - just enough for B3 build. May need more if SMK can send"}],"createdAt":"2026-07-08T05:40:09.889Z","updatedAt":"2026-07-09T00:40:13.335Z"},
+  {"id":1783490853627,"customer":"CHARGEPOINT","project":"JUPITER","pns":["21-226236-07"],"pn":"21-226236-07","sapPn":"","eau":"","pnDescription":"WELDMENT, JUPITER, FRAME","processNeeded":"MEASUREMENT SERVICES","status":"QUOTED","drawing2DName":"","hasDrawing":false,"suppliers":{"Alloy Tools":[{"moq":"2","price":"1350 total","leadTime":"-","incoterm":"-","note":""}]},"npiPos":[],"createdAt":"2026-07-08T06:07:33.627Z","updatedAt":"2026-07-09T01:31:40.178Z"},
+  {"id":1783499080750,"customer":"CHARGEPOINT","project":"JUPITER","pns":["21-226236-07"],"pn":"21-226236-07","sapPn":"","eau":"","pnDescription":"WELDMENT, JUPITER, FRAME","processNeeded":"PACKAGING - CARDBOARD","status":"PENDING","drawing2DName":"","hasDrawing":false,"suppliers":{},"npiPos":[],"createdAt":"2026-07-08T08:24:40.750Z","updatedAt":"2026-07-09T00:40:56.667Z"},
+  {"id":1783499173648,"customer":"CHARGEPOINT","project":"JUPITER","pns":["JUPITER PNs"],"pn":"JUPITER PNs","sapPn":"","eau":"","pnDescription":"All PNs affected","processNeeded":"STD PALLET + PBOX","status":"QUOTED","drawing2DName":"","hasDrawing":false,"suppliers":{"PLL PACKAGING":[{"moq":"100","price":"6.00$","leadTime":"-","incoterm":"DAP","note":"Plain Top + Bottom (No need stitch) MOQ 100pcs x 2 = RM 5.10/pc\n\nPlain Sleeve (Stitch) MOQ 100pcs \u2013 RM 19.45/pc\n\nED: L1150 x W980 x H1000mm Material: DW BAF K275/M120x3/K275\n\nThese prices did not included SST 10%."}],"SKE TIMBER":[{"moq":"1","price":"11.80$","leadTime":"-","incoterm":"DAP","note":""}]},"npiPos":[],"createdAt":"2026-07-08T08:26:13.648Z","updatedAt":"2026-07-09T01:31:48.945Z"}
+];
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+function showLogin()   { document.getElementById("loginSection").classList.add("active");   document.getElementById("migrateSection").classList.remove("active"); }
+function showMigrate() { document.getElementById("migrateSection").classList.add("active"); document.getElementById("loginSection").classList.remove("active"); }
+
+function setLoginError(msg) {
+  const el = document.getElementById("loginError");
+  el.textContent = msg;
+  el.className = "banner" + (msg ? " error" : "");
+}
+
+function setMigrateError(msg) {
+  const el = document.getElementById("migrateError");
+  el.textContent = msg;
+  el.className = "banner" + (msg ? " error" : "");
+}
+
+function log(msg, cls) {
+  const box = document.getElementById("progressLog");
+  const line = document.createElement("div");
+  if (cls) line.className = cls;
+  line.textContent = msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+// ── Auth state ────────────────────────────────────────────────────────────────
+onAuthStateChanged(auth, user => {
+  if (user) {
+    document.getElementById("userEmailDisplay").textContent = user.email;
+    showMigrate();
+  } else {
+    showLogin();
+  }
+});
+
+// ── Login ─────────────────────────────────────────────────────────────────────
+window.doLogin = async function () {
+  const email    = document.getElementById("emailInput").value.trim();
+  const password = document.getElementById("passwordInput").value;
+  const btn      = document.getElementById("loginBtn");
+
+  setLoginError("");
+  if (!email || !password) { setLoginError("Por favor, introduce email y contraseña."); return; }
+
+  btn.disabled = true;
+  btn.textContent = "Iniciando sesión…";
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (err) {
+    setLoginError(friendlyAuthError(err.code));
+    btn.disabled = false;
+    btn.textContent = "Iniciar sesión";
+  }
+};
+
+window.doLogout = async function () {
+  await signOut(auth);
+};
+
+function friendlyAuthError(code) {
+  switch (code) {
+    case "auth/user-not-found":
+    case "auth/wrong-password":
+    case "auth/invalid-credential": return "Email o contraseña incorrectos.";
+    case "auth/too-many-requests":  return "Demasiados intentos. Espera un momento e inténtalo de nuevo.";
+    case "auth/invalid-email":      return "Email no válido.";
+    default:                        return "Error de autenticación: " + code;
+  }
+}
+
+// Allow Enter key to submit login
+document.getElementById("passwordInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") window.doLogin();
+});
+document.getElementById("emailInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") window.doLogin();
+});
+
+// ── Migration ─────────────────────────────────────────────────────────────────
+window.doMigrate = async function () {
+  const btn = document.getElementById("migrateBtn");
+  const progressWrap = document.getElementById("progressWrap");
+  const summaryBox   = document.getElementById("summaryBox");
+
+  setMigrateError("");
+  btn.disabled = true;
+  btn.textContent = "Migrando…";
+  progressWrap.classList.add("visible");
+  document.getElementById("progressLog").innerHTML = "";
+  summaryBox.className = "summary-box";
+
+  let rfqsUploaded = 0;
+  let errors = 0;
+
+  try {
+    // 1. Upload settings
+    log("⏳ Subiendo settings (customers, suppliers, serviceTypes)…");
+    await setDoc(doc(db, "app", "settings"), SETTINGS);
+    log("✅ Settings subidos correctamente.", "log-ok");
+
+    // 2. Upload RFQs
+    for (let i = 0; i < RFQS.length; i++) {
+      const rfq = RFQS[i];
+      const docId = String(rfq.id);
+      log(`⏳ Subiendo RFQ ${i + 1}/${RFQS.length} — ${rfq.pn}`);
+      try {
+        await setDoc(doc(db, "rfqs", docId), rfq);
+        log(`✅ RFQ ${i + 1}/${RFQS.length} subido (${docId}).`, "log-ok");
+        rfqsUploaded++;
+      } catch (rfqErr) {
+        log(`❌ Error en RFQ ${docId}: ${rfqErr.message}`, "log-err");
+        errors++;
+      }
+    }
+
+    // 3. Summary
+    const summaryText   = document.getElementById("summaryText");
+    const summaryDetail = document.getElementById("summaryDetail");
+    if (errors === 0) {
+      summaryText.textContent   = `✅ Migración completada — ${rfqsUploaded} RFQs subidos`;
+      summaryDetail.textContent = "Settings y todos los RFQs se han guardado en Firestore correctamente.";
+      log(`\n🎉 Migración completada. ${rfqsUploaded} RFQs subidos sin errores.`, "log-ok");
+    } else {
+      summaryText.textContent   = `⚠️ Migración con errores — ${rfqsUploaded} RFQs subidos, ${errors} fallidos`;
+      summaryDetail.textContent = "Revisa el log para ver los RFQs que fallaron.";
+      log(`\n⚠️ Migración terminada con ${errors} error(es).`, "log-err");
+    }
+    summaryBox.className = "summary-box done";
+    btn.textContent = "🚀 Migrar datos a Firebase";
+    btn.disabled = false;
+
+  } catch (err) {
+    log(`❌ Error fatal: ${err.message}`, "log-err");
+    setMigrateError("Error durante la migración: " + err.message);
+    btn.textContent = "🚀 Migrar datos a Firebase";
+    btn.disabled = false;
+  }
+};
+</script>
+</body>
+</html>
