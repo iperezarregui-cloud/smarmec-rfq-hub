@@ -650,6 +650,23 @@ function logoOrFallback(c){if(c.logo)return '<div class="logo-thumb"><img src="'
 function pnDisplay(r){const pns=(r.pns&&r.pns.length)?r.pns:[r.pn].filter(Boolean);return pns.join(" · ");}
 function fileIconForName(name){const ext=(name||"").split(".").pop().toLowerCase();if(ext==="pdf")return "📄";if(["msg","eml"].includes(ext))return "📧";if(["xls","xlsx"].includes(ext))return "📊";if(["doc","docx"].includes(ext))return "📝";if(["png","jpg","jpeg","gif","webp"].includes(ext))return "🖼️";return "📎";}
 function attachBadgeHtml(count){if(!count)return "";return '<span style="position:absolute;top:-5px;right:-5px;background:var(--brand);color:#fff;border-radius:50%;font-size:9px;width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-weight:800;">'+count+'</span>';}
+async function downloadFile(url, filename) {
+  try {
+    toast("Downloading…");
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Download failed");
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  } catch(e) {
+    toast("Download failed", "warn");
+  }
+}
+window.downloadFile = downloadFile;
 function getRFQByModalIndex(){const id=document.getElementById("editRFQIndex").value;const idx=data.rfqs.findIndex(r=>String(r.id)===String(id));return{idx,rfq:data.rfqs[idx]};}
 
 /* ═══════════════════════════════════════════
@@ -734,7 +751,7 @@ function renderEditDrawingActions(rfq){
     html+=drawings.map((d,i)=>'<div class="upload-chip" style="margin-bottom:4px;"><span class="filename">📄 '+d.name+'</span>'
       +'<div style="display:flex;gap:6px;margin-left:6px;">'
       +'<a href="'+d.url+'" target="_blank"><button class="secondary" style="padding:4px 10px;font-size:12px;">Preview</button></a>'
-      +'<a href="'+d.url+'" download="'+d.name+'"><button class="secondary" style="padding:4px 10px;font-size:12px;">Download</button></a>'
+      +'<button class="secondary" style="padding:4px 10px;font-size:12px;" onclick="downloadFile(\''+d.url.replace(/'/g,"\\'")+'\',\''+d.name.replace(/'/g,"\\'")+'\')">Download</button>'
       +'</div>'
       +'<button class="chip-x" style="margin-left:4px;color:var(--excl);" onclick="deleteDrawingFromRFQ('+i+')">\u2715</button></div>').join("");
   }
@@ -771,7 +788,7 @@ function rfqCardDrawingActions(r){
     +drawings.map(d=>'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
       +'<span style="font-size:12px;color:var(--muted);">📄 '+d.name+'</span>'
       +'<a href="'+d.url+'" target="_blank"><button class="secondary">Preview PDF</button></a>'
-      +'<a href="'+d.url+'" download><button class="secondary">Download PDF</button></a>'
+      +'<button class="secondary" onclick="downloadFile(\''+d.url.replace(/'/g,"\\'")+'\',\''+d.name.replace(/'/g,"\\'")+'\')">Download PDF</button>'
       +'</div>').join("")
     +'</div>';
 }
