@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NPI RFQ HUB — Smarmec</title>
+  <style>
+    :root{
+      --brand:#9A3B26;--brand-d:#7E2F1E;--brand-soft:#F4E9E5;--brand-soft2:#EBD8D4;
+      --gray:#8B8D8E;--gray-soft:#EFEFF0;--ink:#2A2523;--ink-2:#6C625D;--muted:#948A84;
+      --bg:#FAF9F7;--panel:#FFFFFF;--line:#E7E1DB;--line-2:#D8D0C9;
+      --ok:#2E7D52;--warn:#B7791F;--excl:#C0392B;--violet:#6E59B2;
+      --shadow:0 1px 2px rgba(42,37,35,.06),0 6px 20px rgba(42,37,35,.06);
+      --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%}
+    body{font-family:var(--sans);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.45;}
+
+    /* ── LOGIN SCREEN ── */
+    #loginScreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999;}
+    .login-box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:40px 36px;width:min(400px,94vw);box-shadow:0 8px 40px rgba(42,37,35,.12);}
+    .login-logo{display:flex;align-items:center;gap:14px;margin-bottom:28px;justify-content:center;}
+    .login-title{font-size:1.1rem;font-weight:760;color:var(--brand);}
+    .login-subtitle{font-size:12px;color:var(--muted);text-align:center;margin-top:4px;margin-bottom:24px;}
+    .login-error{background:#fdecea;border:1px solid #f0c0bc;color:var(--excl);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px;display:none;}
+
+    /* ── SYNC INDICATOR ── */
+    .sync-dot{width:8px;height:8px;border-radius:50%;background:#ccc;display:inline-block;margin-left:6px;transition:.3s;}
+    .sync-dot.syncing{background:#f59e0b;animation:pulse 1s infinite;}
+    .sync-dot.ok{background:var(--ok);}
+    .sync-dot.error{background:var(--excl);}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+    .container{max-width:1400px;margin:0 auto;padding:22px}
+    header{display:flex;justify-content:space-between;align-items:center;background:var(--panel);padding:16px 22px;border-radius:12px;border:1px solid var(--line);box-shadow:var(--shadow);margin-bottom:24px;gap:16px;flex-wrap:wrap;}
+    .header-left{display:flex;align-items:center;gap:18px;}
+    .header-divider{width:1px;height:36px;background:var(--line-2);flex-shrink:0;}
+    .header-right{display:flex;align-items:center;gap:10px;}
+    header h1{font-size:1.35rem;font-weight:760;letter-spacing:-.01em;color:var(--brand);}
+    .user-pill{display:flex;align-items:center;gap:8px;background:var(--brand-soft);border:1px solid var(--brand-soft2);border-radius:999px;padding:6px 12px;font-size:12px;color:var(--ink-2);}
+    button{border:1px solid transparent;border-radius:8px;cursor:pointer;transition:.12s ease;font-weight:620;font-family:inherit;font-size:13px;}
+    button:hover{transform:translateY(-1px)}
+    button.primary{background:var(--brand);color:#fff;padding:10px 16px;border-color:var(--brand);}
+    button.primary:hover{background:var(--brand-d);border-color:var(--brand-d)}
+    button.secondary{background:var(--panel);color:var(--ink);border:1px solid var(--line-2);padding:9px 14px;}
+    button.secondary:hover{background:var(--gray-soft);color:var(--brand)}
+    button.danger{background:var(--excl);color:#fff;padding:8px 12px;font-size:12px;border-color:var(--excl);}
+    button.success{background:var(--ok);color:#fff;padding:10px 16px;border-color:var(--ok);}
+    .icon-btn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-size:17px;background:var(--brand);color:#fff;border:1px solid var(--brand);}
+    .icon-btn:hover{background:var(--brand-d);}
+    .note-btn{width:24px;height:24px;border-radius:50%;padding:0;background:#fff;border:1px solid var(--line-2);color:var(--brand);font-weight:800;font-size:13px;}
+    .note-btn:hover{border-color:var(--brand);background:var(--brand-soft)}
+    .attach-btn{width:24px;height:24px;border-radius:50%;padding:0;background:#fff;border:1px solid var(--line-2);color:#3B6DB5;font-size:14px;display:inline-flex;align-items:center;justify-content:center;position:relative;}
+    .attach-btn:hover{border-color:#3B6DB5;background:#EDF2FB;}
+    .attach-btn.has-files{background:#EDF2FB;border-color:#3B6DB5;}
+    .row-action-btn{width:26px;height:26px;border-radius:6px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:15px;border:1px solid var(--line-2);background:#fff;}
+    .row-action-btn.edit{color:#3B6DB5;border-color:#b8cce8;}
+    .row-action-btn.edit:hover{background:#EDF2FB;border-color:#3B6DB5;}
+    .row-action-btn.del{color:var(--excl);border-color:#f0c0bc;}
+    .row-action-btn.del:hover{background:#fdecea;border-color:var(--excl);}
+    .expand-btn{width:28px;height:28px;border-radius:50%;padding:0;font-size:18px;background:var(--brand);color:#fff;border-color:var(--brand);display:inline-flex;align-items:center;justify-content:center;}
+    .expand-btn:hover{background:var(--brand-d);}
+    button.clicked,.icon-btn.clicked{background:#d9d7d5!important;color:#6b6b6b!important;border-color:#d0cdca!important;transform:none!important}
+    button:disabled,.icon-btn:disabled{opacity:1;cursor:default;transform:none!important}
+    .tabs-wrap{background:var(--panel);border-radius:12px;border:1px solid var(--line);padding:14px 18px;margin-bottom:20px;box-shadow:var(--shadow);display:flex;align-items:center;min-height:64px;}
+    .tabs{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+    .tab-button{background:#f8f6f4;color:var(--ink-2);border:1px solid var(--line-2);border-radius:8px;padding:10px 18px;white-space:nowrap;font-size:13px;line-height:1;}
+    .tab-button.active{background:var(--brand);color:#fff;border-color:var(--brand);font-weight:740;}
+    .tab-button:hover:not(.active){background:var(--gray-soft);color:var(--brand);}
+    .tab-content{display:none}.tab-content.active{display:block}
+    .panel{background:var(--panel);border-radius:12px;border:1px solid var(--line);box-shadow:var(--shadow);padding:22px;margin-bottom:20px;}
+    .panel h2{margin-bottom:14px;font-size:1.15rem;color:var(--ink);font-weight:730}
+    .form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:10px}
+    .form-group{margin-bottom:14px}
+    label{display:block;margin-bottom:7px;font-size:11px;font-weight:720;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+    input[type="text"],input[type="email"],input[type="tel"],input[type="date"],input[type="password"],select,textarea{width:100%;border:1px solid var(--line-2);border-radius:8px;padding:9px 10px;font-size:13px;background:#fff;color:var(--ink);font-family:inherit;}
+    input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft);}
+    .button-group{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    .filter-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+    .rfq-list{display:grid;gap:14px;margin-top:16px}
+    .rfq-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;cursor:pointer;transition:.16s ease;}
+    .rfq-card:hover{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand-soft2),var(--shadow);background:#fffdfc;}
+    .rfq-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+    .rfq-title{font-size:1.02rem;font-weight:780;color:var(--ink)}
+    .rfq-dates{font-size:11px;color:var(--muted);text-align:right;line-height:1.35;white-space:nowrap}
+    .rfq-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .badge{display:inline-block;border-radius:999px;font-size:10.5px;font-weight:500;padding:5px 10px;letter-spacing:.01em;border:1px solid transparent;}
+    .badge.customer{background:#F2F2F2;color:#F87B00;border-color:#848484;}
+    .badge.project{background:#F2F2F2;color:#F87B00;border-color:#848484;}
+    .badge.pending{background:#FFEB9C;color:#A1610F;border-color:#A1610F;}
+    .badge.quoted{background:#C6EFCE;color:#3B8645;border-color:#3B8645;}
+    .badge.transferred{background:#e8e4f4;color:var(--violet);border-color:var(--violet);}
+    .small-muted{font-size:12px;color:var(--muted)}
+    .empty-state{text-align:center;padding:40px 14px;color:var(--muted)}
+    .settings-list{display:flex;flex-direction:column;gap:10px}
+    .settings-item{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;background:#fff;border:1px solid var(--line);border-radius:9px;padding:12px;}
+    .customer-head-left{display:flex;align-items:center;gap:10px}
+    .logo-thumb{width:52px;height:52px;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
+    .logo-thumb img{width:100%;height:100%;object-fit:contain;}
+    .service-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+    .service-tag{background:#f3f1ef;border:1px solid var(--line);color:var(--ink-2);border-radius:999px;padding:3px 8px;font-size:11px;font-weight:680}
+    .supplier-name-label{font-size:1.02rem;font-weight:780;color:var(--ink);}
+    .top-action{display:flex;justify-content:flex-end;margin-bottom:12px}
+    .upload-chip{display:inline-flex;align-items:center;gap:8px;background:var(--brand-soft);border:1px solid var(--brand-soft2);color:var(--ink);border-radius:8px;padding:8px 11px;font-weight:620;max-width:100%;font-size:13px;}
+    .upload-chip .filename{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+    .chip-x{border:none;background:var(--excl);color:#fff;width:22px;height:22px;border-radius:50%;font-size:12px;line-height:22px;text-align:center;cursor:pointer;padding:0;flex-shrink:0;}
+    .chip-x.small{width:18px;height:18px;line-height:18px;font-size:11px}
+    .modal-overlay{position:fixed;inset:0;background:rgba(42,37,35,.45);display:none;align-items:center;justify-content:center;z-index:1000;padding:14px}
+    .modal-overlay.active{display:flex}
+    .modal{width:min(1050px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:12px;border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.30);padding:18px}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+    .close-btn{background:#fff;color:var(--ink-2);padding:8px 12px;border:1px solid var(--line-2)}
+    .close-btn:hover{color:var(--brand);border-color:var(--brand)}
+    .multi-select-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:8px;border:1px solid var(--line);border-radius:8px;padding:10px;background:#fcfbfa}
+    .supplier-chip{display:inline-flex;align-items:center;gap:6px;background:#f5f2ef;border:1px solid var(--line);color:var(--ink-2);border-radius:999px;padding:6px 10px;margin:0 6px 6px 0;font-size:12px;font-weight:700}
+    .suppliers-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .quotes-table,.po-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+    .quotes-table th,.quotes-table td,.po-table th,.po-table td{border-bottom:1px solid var(--line);padding:8px;text-align:left}
+    .quotes-table th,.po-table th{background:#fffaf8;font-weight:760;color:var(--muted);text-transform:uppercase;font-size:11px;letter-spacing:.04em}
+    .po-table tr.po-received td{background:#f0faf4;}
+    .received-check{color:#2E7D52;font-size:16px;font-weight:900;}
+    .add-quote-line,.add-po-line{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:10px;padding:10px;border:1px dashed var(--line-2);border-radius:8px;background:#fcfbfa}
+    .date-field{display:flex;flex-direction:column;gap:4px}
+    .date-input-wrap{position:relative}
+    .date-input-wrap .cal-icon{position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;opacity:.65;font-size:14px;}
+    .date-input-wrap input{padding-right:28px}
+    .section-title{display:flex;align-items:center;justify-content:space-between;margin-top:14px;margin-bottom:6px;font-size:1rem;font-weight:760;color:var(--ink)}
+    .section-toggle{width:28px;height:28px;border-radius:50%;padding:0;font-size:18px;background:var(--brand);color:#fff;border-color:var(--brand);display:inline-flex;align-items:center;justify-content:center;}
+    .section-body{display:none}.section-body.active{display:block}
+    .customer-projects{display:none;margin-top:10px}.customer-projects.active{display:block}
+    .project-row-item{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#f8f6f4;border:1px solid var(--line-2);border-radius:8px;padding:9px 14px;font-size:13px;font-weight:620;color:var(--ink-2);min-height:38px;}
+    .project-name-btn{background:none;border:none;padding:0;margin:0;font-size:13px;font-weight:620;color:var(--ink-2);cursor:pointer;text-align:left;flex:1;transition:color .12s;}
+    .project-name-btn:hover{color:var(--brand);text-decoration:underline;transform:none;}
+    .pn-tags-wrap{border:1px solid var(--line-2);border-radius:8px;padding:6px 8px;background:#fff;display:flex;flex-wrap:wrap;gap:6px;align-items:center;cursor:text;min-height:42px;}
+    .pn-tags-wrap:focus-within{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft);}
+    .pn-tag{display:inline-flex;align-items:center;gap:4px;background:var(--brand-soft);border:1px solid var(--brand-soft2);color:var(--ink);border-radius:999px;padding:3px 8px 3px 10px;font-size:12px;font-weight:700;white-space:nowrap;}
+    .pn-tag-x{width:16px;height:16px;border-radius:50%;background:var(--excl);color:#fff;border:none;cursor:pointer;font-size:10px;padding:0;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;}
+    .pn-inline-input{border:none!important;outline:none!important;box-shadow:none!important;padding:2px 4px!important;font-size:13px;min-width:160px;flex:1;background:transparent;}
+    .services-label-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+    .services-label-row label{margin-bottom:0;}
+    .add-service-inline-btn{width:20px;height:20px;border-radius:50%;background:var(--brand);color:#fff;border:1px solid var(--brand);font-size:15px;padding:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+    .add-service-inline-btn:hover{background:var(--brand-d);}
+    .toast-wrap{position:fixed;top:16px;right:16px;z-index:9998;display:flex;flex-direction:column;gap:8px}
+    .toast{background:var(--ink);color:#fff;padding:10px 14px;border-radius:8px;box-shadow:var(--shadow);font-size:13px;animation:fadeIn .2s ease}
+    .toast.ok{background:var(--ok)}.toast.warn{background:#b45309;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+    #attachmentModal{z-index:3200!important;}
+    #attachmentModal .modal{max-width:560px;}
+    .attach-file-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;min-height:40px;}
+    .attach-file-item{display:flex;align-items:center;gap:10px;background:#f8f6f4;border:1px solid var(--line-2);border-radius:8px;padding:8px 12px;font-size:13px;}
+    .attach-file-icon{font-size:20px;flex-shrink:0;}
+    .attach-file-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);}
+    .attach-file-actions{display:flex;gap:6px;flex-shrink:0;}
+    .attach-drop-zone{border:2px dashed var(--line-2);border-radius:10px;padding:24px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;transition:.15s;margin-top:10px;background:#fcfbfa;}
+    .attach-drop-zone:hover,.attach-drop-zone.dragover{border-color:var(--brand);background:var(--brand-soft);color:var(--brand);}
+    .attach-drop-zone .drop-icon{font-size:28px;margin-bottom:6px;}
+    #editLineModal{z-index:3300!important;}
+    #editLineModal .modal{max-width:540px;}
+    @media(max-width:768px){.container{padding:14px}header{flex-direction:column;align-items:flex-start;gap:12px}.modal{padding:14px}.tab-button{padding:10px 12px}}
+    #rfqModal{z-index:1000;}
+    #assocCenterModal{z-index:2000!important;}
+    #noteModal{z-index:3001!important;}#noteModal .modal{max-width:520px;}
+    #addServiceModal{z-index:3100!important;}#addServiceModal .modal{max-width:420px;}
+    #editCustomerModal{z-index:3100!important;}#editCustomerModal .modal{max-width:480px;}
+  </style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 60" height="44" width="auto">
+        <g transform="translate(0,4)">
+          <path fill="#9A3B26" d="M26 0 l2.5 4.3 a13 13 0 0 1 3.8 0 l2.5-4.3 5 2.9-1.2 4.9a13 13 0 0 1 2.7 2.7l4.9-1.2 2.9 5-4.3 2.5a13 13 0 0 1 0 3.8l4.3 2.5-2.9 5-4.9-1.2a13 13 0 0 1-2.7 2.7l1.2 4.9-5 2.9-2.5-4.3a13 13 0 0 1-3.8 0L26 40l-5-2.9 1.2-4.9a13 13 0 0 1-2.7-2.7l-4.9 1.2-2.9-5 4.3-2.5a13 13 0 0 1 0-3.8L11.7 17l2.9-5 4.9 1.2a13 13 0 0 1 2.7-2.7L21 5.5z"/>
+          <circle cx="28" cy="20" r="6" fill="#fff"/>
+        </g>
+        <text x="58" y="32" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="22" font-weight="800" fill="#9A3B26" letter-spacing="-0.5">smarmec</text>
+        <text x="60" y="50" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="13" font-weight="500" fill="#848484" letter-spacing="1">velatia</text>
+      </svg>
+    </div>
+    <div class="login-subtitle">NPI RFQ HUB — Inicia sesión para continuar</div>
+    <div class="login-error" id="loginError"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="loginEmail" placeholder="tu@email.com" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <div class="form-group"><label>Contraseña</label><input type="password" id="loginPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <button class="primary" style="width:100%;padding:12px;" onclick="doLogin()" id="loginBtn">Entrar</button>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="container" id="appContainer" style="display:none;">
+  <header>
+    <div class="header-left">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 60" height="44" width="auto">
+        <g transform="translate(0,4)">
+          <path fill="#9A3B26" d="M26 0 l2.5 4.3 a13 13 0 0 1 3.8 0 l2.5-4.3 5 2.9-1.2 4.9a13 13 0 0 1 2.7 2.7l4.9-1.2 2.9 5-4.3 2.5a13 13 0 0 1 0 3.8l4.3 2.5-2.9 5-4.9-1.2a13 13 0 0 1-2.7 2.7l1.2 4.9-5 2.9-2.5-4.3a13 13 0 0 1-3.8 0L26 40l-5-2.9 1.2-4.9a13 13 0 0 1-2.7-2.7l-4.9 1.2-2.9-5 4.3-2.5a13 13 0 0 1 0-3.8L11.7 17l2.9-5 4.9 1.2a13 13 0 0 1 2.7-2.7L21 5.5z"/>
+          <circle cx="28" cy="20" r="6" fill="#fff"/>
+        </g>
+        <text x="58" y="32" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="22" font-weight="800" fill="#9A3B26" letter-spacing="-0.5">smarmec</text>
+        <text x="60" y="50" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" font-size="13" font-weight="500" fill="#848484" letter-spacing="1">velatia</text>
+      </svg>
+      <div class="header-divider"></div>
+      <h1>NPI RFQ HUB <span class="sync-dot" id="syncDot" title="Estado sincronización"></span></h1>
+    </div>
+    <div class="header-right">
+      <div class="user-pill">
+        <span>👤</span><span id="userEmailLabel"></span>
+      </div>
+      <button class="secondary" onclick="doLogout()">Salir</button>
+    </div>
+  </header>
+
+  <div class="tabs-wrap">
+    <div class="tabs">
+      <button class="tab-button active" onclick="switchTab('new-rfq',event)">+ NEW RFQ</button>
+      <button class="tab-button" onclick="switchTab('rfq-list',event)">RFQ LIST</button>
+      <button class="tab-button" onclick="switchTab('customers',event)">CUSTOMERS</button>
+      <button class="tab-button" onclick="switchTab('suppliers',event)">SUPPLIERS</button>
+    </div>
+  </div>
+
+  <div id="new-rfq" class="tab-content active">
+    <div class="panel">
+      <h2>Create New RFQ</h2>
+      <div class="form-row">
+        <div class="form-group"><label>Customer *</label><select id="newCustomer" onchange="onNewCustomerChange()"></select></div>
+        <div class="form-group"><label>Project *</label><select id="newProject"></select></div>
+        <div class="form-group"><label>SAP PN</label><input type="text" id="newSapPN"/></div>
+        <div class="form-group"><label>EAU</label><input type="text" id="newEAU"/></div>
+      </div>
+      <div class="form-group">
+        <label>Part Numbers *</label>
+        <div class="pn-tags-wrap" id="newPNWrap" onclick="document.getElementById('newPNInput').focus()">
+          <input class="pn-inline-input" id="newPNInput" type="text" placeholder="Type and press Enter…" onkeydown="pnKeydown(event,'new')"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>PN Description</label><input type="text" id="newPNDescription"/></div>
+        <div class="form-group"><label>Service Needed</label><input type="text" id="newProcessNeeded"/></div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="newStatus">
+            <option value="PENDING">PENDING</option>
+            <option value="QUOTED">QUOTED</option>
+            <option value="TRANSFERRED">TRANSFERRED</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>2D Drawing (PDF)</label>
+        <input type="file" id="newRFQPdfHidden" accept="application/pdf" style="display:none;" onchange="onNewDrawingSelected(this)"/>
+        <div id="newDrawingUI"></div>
+      </div>
+      <div class="button-group">
+        <button class="primary" onclick="createNewRFQ(this)">Create RFQ</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="rfq-list" class="tab-content">
+    <div class="panel">
+      <h2>RFQ List</h2>
+      <div class="filter-row">
+        <div class="form-group"><label>Customer</label><select id="filterCustomer" onchange="onFilterCustomerChange()"></select></div>
+        <div class="form-group"><label>Project</label><select id="filterProject" onchange="applyFilters()"></select></div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="filterStatus" onchange="applyFilters()">
+            <option value="">-- All --</option>
+            <option value="PENDING">PENDING</option>
+            <option value="QUOTED">QUOTED</option>
+            <option value="TRANSFERRED">TRANSFERRED</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Search Part Number</label><input type="text" id="filterPN" placeholder="Type part number..." oninput="applyFilters()"></div>
+        <div class="form-group"><label>Search PN Description</label><input type="text" id="filterPNDescription" placeholder="Type description..." oninput="applyFilters()"></div>
+        <div class="form-group"><label>&nbsp;</label><button class="secondary" style="width:100%" onclick="clearFilters()">Clear Filters</button></div>
+      </div>
+      <div id="rfqListContainer" class="rfq-list"></div>
+    </div>
+  </div>
+
+  <div id="customers" class="tab-content">
+    <div class="panel">
+      <h2>Customer Management</h2>
+      <div id="customersList" class="settings-list"></div>
+      <h3 style="margin:20px 0 10px">Add New Customer</h3>
+      <div class="form-row">
+        <div class="form-group"><label>Customer Name *</label><input type="text" id="newCustomerName"/></div>
+        <div class="form-group">
+          <label>Logo</label>
+          <input type="file" id="newCustomerLogoFile" accept="image/*" style="display:none;" onchange="onNewLogoSelected(this)"/>
+          <div id="newCustomerLogoUI"></div>
+        </div>
+      </div>
+      <div class="button-group"><button class="primary" onclick="addCustomer(this)">Add Customer</button></div>
+    </div>
+  </div>
+
+  <div id="suppliers" class="tab-content">
+    <div class="panel">
+      <h2>Supplier Management</h2>
+      <div class="filter-row" style="margin-bottom:10px;">
+        <div class="form-group"><label>Filter by Service</label><select id="supplierServiceFilter" onchange="renderSuppliersList()"></select></div>
+      </div>
+      <div class="top-action"><button class="primary" onclick="openSupplierModal()">+ Add Supplier</button></div>
+      <div id="suppliersList" class="settings-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div id="supplierModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3 id="supplierModalTitle">Add Supplier</h3><button class="close-btn" onclick="closeSupplierModal()">Close</button></div>
+    <input type="hidden" id="supplierEditIndex"/>
+    <div class="form-row">
+      <div class="form-group"><label>Name *</label><input type="text" id="supplierName"/></div>
+      <div class="form-group"><label>Location *</label><input type="text" id="supplierLocation"/></div>
+      <div class="form-group"><label>Contact</label><input type="text" id="supplierContact"/></div>
+      <div class="form-group"><label>Email</label><input type="email" id="supplierEmail"/></div>
+      <div class="form-group"><label>Phone</label><input type="tel" id="supplierPhone"/></div>
+    </div>
+    <div class="form-group">
+      <div class="services-label-row">
+        <label>Services</label>
+        <button class="add-service-inline-btn" onclick="openAddServiceModal()">+</button>
+      </div>
+      <div class="multi-select-options" id="supplierServicesOptions"></div>
+    </div>
+    <div class="button-group">
+      <button class="primary" onclick="saveSupplierFromModal(this)">Save</button>
+      <button class="secondary" onclick="closeSupplierModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="addServiceModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3>Add New Service Type</h3><button class="close-btn" onclick="closeAddServiceModal()">Close</button></div>
+    <div class="form-group"><label>Service name</label><input type="text" id="newServiceInput" placeholder="e.g. WELDING" onkeydown="if(event.key==='Enter')addServiceType()"/></div>
+    <div class="button-group"><button class="primary" onclick="addServiceType()">Add</button><button class="secondary" onclick="closeAddServiceModal()">Cancel</button></div>
+  </div>
+</div>
+
+<div id="editCustomerModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3 id="editCustomerModalTitle">Edit Customer</h3><button class="close-btn" onclick="closeEditCustomerModal()">Close</button></div>
+    <input type="hidden" id="editCustomerIndex"/>
+    <div class="form-group"><label>Name *</label><input type="text" id="editCustomerNameInput"/></div>
+    <div class="form-group">
+      <label>Logo</label>
+      <input type="file" id="editLogoFileInput" accept="image/*" style="display:none;" onchange="onEditLogoSelected(this)"/>
+      <div id="editLogoUI"></div>
+    </div>
+    <div class="button-group"><button class="primary" onclick="saveCustomerEdits(this)">Save</button><button class="secondary" onclick="closeEditCustomerModal()">Cancel</button></div>
+  </div>
+</div>
+
+<div id="assocCenterModal" class="modal-overlay">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header"><h3>Add Associated Supplier</h3><button class="close-btn" onclick="closeAssocCenterModal()">Close</button></div>
+    <div class="form-group"><label>Supplier</label><select id="associatedSupplierSelect"></select></div>
+    <div class="button-group"><button class="primary" onclick="confirmAddAssociatedSupplier(this)">Add</button></div>
+  </div>
+</div>
+
+<div id="noteModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3 id="noteModalTitle">Line Notes</h3><button class="close-btn" onclick="closeNoteModal()">Close</button></div>
+    <input type="hidden" id="noteType"/><input type="hidden" id="noteSupplier"/><input type="hidden" id="noteIndex"/>
+    <div class="form-group"><label>Notes</label><textarea id="noteText" rows="6" placeholder="Write note..."></textarea></div>
+    <div class="button-group"><button class="primary" onclick="saveLineNote()">Save Note</button></div>
+  </div>
+</div>
+
+<div id="attachmentModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="attachmentModalTitle">Attachments</h3>
+      <button class="close-btn" onclick="closeAttachmentModal()">Close</button>
+    </div>
+    <input type="file" id="attachFileInput" accept=".pdf,.msg,.eml,.docx,.xlsx,.xls,.doc,.png,.jpg,.jpeg" style="display:none;" multiple onchange="onAttachFilesSelected(this)"/>
+    <div class="attach-file-list" id="attachFileList"></div>
+    <div class="attach-drop-zone" id="attachDropZone"
+         onclick="document.getElementById('attachFileInput').click()"
+         ondragover="attachDragOver(event)" ondragleave="attachDragLeave(event)" ondrop="attachDrop(event)">
+      <div class="drop-icon">📎</div>
+      <div>Click to add files or drag &amp; drop here</div>
+      <div style="font-size:11px;margin-top:4px;color:var(--muted);">PDF, MSG, EML, DOCX, XLSX, images…</div>
+    </div>
+  </div>
+</div>
+
+<div id="editLineModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3 id="editLineModalTitle">Edit Line</h3><button class="close-btn" onclick="closeEditLineModal()">Close</button></div>
+    <input type="hidden" id="editLineType"/>
+    <input type="hidden" id="editLineSupplier"/>
+    <input type="hidden" id="editLineIndex"/>
+    <div id="editLineQuoteFields">
+      <div class="form-row">
+        <div class="form-group"><label>MOQ</label><input type="text" id="el-moq"/></div>
+        <div class="form-group"><label>Unit Price (USD)</label><input type="text" id="el-price"/></div>
+        <div class="form-group"><label>Lead Time (Weeks)</label><input type="text" id="el-lead"/></div>
+        <div class="form-group"><label>Incoterm</label><input type="text" id="el-incoterm"/></div>
+      </div>
+    </div>
+    <div id="editLinePoFields" style="display:none;">
+      <div class="form-row">
+        <div class="form-group"><label>Supplier</label><select id="el-po-supplier"></select></div>
+        <div class="form-group"><label>PO Number</label><input type="text" id="el-po-number"/></div>
+        <div class="form-group"><label>Qty</label><input type="text" id="el-po-qty"/></div>
+        <div class="form-group"><label>Unit Price (USD)</label><input type="text" id="el-po-price"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>PO Date</label><div class="date-input-wrap"><input type="date" id="el-po-date"/><span class="cal-icon">📅</span></div></div>
+        <div class="form-group"><label>ETA</label><div class="date-input-wrap"><input type="date" id="el-po-eta"/><span class="cal-icon">📅</span></div></div>
+        <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:4px;">
+          <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink);margin:0;"><input type="checkbox" id="el-po-received"/> Received</label>
+        </div>
+      </div>
+    </div>
+    <div class="button-group"><button class="primary" onclick="saveEditedLine(this)">Save</button><button class="secondary" onclick="closeEditLineModal()">Cancel</button></div>
+  </div>
+</div>
+
+<div id="rfqModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3>Edit RFQ</h3><button class="close-btn" onclick="closeRFQModal()">Close</button></div>
+    <input type="hidden" id="editRFQIndex"/>
+    <input type="file" id="editRFQReplaceHidden" accept="application/pdf" style="display:none;" onchange="onReplaceDrawingSelected(this)"/>
+    <div class="form-row">
+      <div class="form-group"><label>Customer *</label><select id="editRFQCustomer" onchange="onEditRFQCustomerChange()"></select></div>
+      <div class="form-group"><label>Project *</label><select id="editRFQProject"></select></div>
+      <div class="form-group"><label>SAP PN</label><input type="text" id="editRFQSapPN"/></div>
+      <div class="form-group"><label>EAU</label><input type="text" id="editRFQEAU"/></div>
+    </div>
+    <div class="form-group">
+      <label>Part Numbers *</label>
+      <div class="pn-tags-wrap" id="editPNWrap" onclick="document.getElementById('editPNInput').focus()">
+        <input class="pn-inline-input" id="editPNInput" type="text" placeholder="Type and press Enter…" onkeydown="pnKeydown(event,'edit')"/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>PN Description</label><input type="text" id="editRFQPNDescription"/></div>
+      <div class="form-group"><label>Service Needed</label><input type="text" id="editRFQProcessNeeded"/></div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="editRFQStatus">
+          <option value="PENDING">PENDING</option>
+          <option value="QUOTED">QUOTED</option>
+          <option value="TRANSFERRED">TRANSFERRED</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>2D Drawing</label><div id="editPdfActions"></div></div>
+    <div class="form-group">
+      <label>Associated Suppliers</label>
+      <div class="suppliers-row"><div id="rfqSuppliersChips"></div><button class="icon-btn" onclick="openAssocCenterModal(this)">+</button></div>
+    </div>
+    <div class="section-title"><span>Supplier Quote Lines</span><button class="section-toggle" onclick="toggleSectionBody('quotesBody')">+</button></div>
+    <div id="rfqQuotesSection"></div><div id="quotesBody" class="section-body"></div>
+    <div class="section-title"><span>NPI PO</span><button class="section-toggle" onclick="toggleSectionBody('poBody')">+</button></div>
+    <div id="rfqPoSection"></div><div id="poBody" class="section-body"></div>
+    <div class="button-group" style="margin-top:16px;">
+      <button class="primary" onclick="saveRFQFromModal(this)">Save Changes</button>
+      <button class="danger" onclick="deleteRFQFromModal()">Delete RFQ</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIREBASE + APP SCRIPTS -->
+<script type="module">
+/* ═══════════════════════════════════════════
+   FIREBASE CONFIG
+═══════════════════════════════════════════ */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, collection, getDocs, setDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBAwnkMckOgcFzt1lZsZh4HS9qnCcYQmxg",
+  authDomain: "smarmec-npi-rfq-hub.firebaseapp.com",
+  projectId: "smarmec-npi-rfq-hub",
+  storageBucket: "smarmec-npi-rfq-hub.firebasestorage.app",
+  messagingSenderId: "170921266072",
+  appId: "1:170921266072:web:3b064672402286f9c339ed",
+  measurementId: "G-H5X03LNDLH"
+};
+
+const CLOUD_NAME = "zeveio1w";
+const UPLOAD_PRESET = "rfq_hub_uploads";
+
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+const defaultServices=["MACHINING","POWDER COATING","STAMPING","SURFACE TREATMENT","TRADING"];
+const data={serviceTypes:[...defaultServices],customers:[],suppliers:[],rfqs:[],filters:{customer:"",project:"",status:"",pn:"",pnDescription:""}};
+const pnState={new:[],edit:[]};
+let currentRFQId=null; // Firestore doc id of RFQ being edited
+let newDrawingTemp={url:null,name:""};
+let newLogoTemp={url:null,name:""};
+let editLogoTemp={url:null,name:""};
+let _attachMode=null,_attachRfqId=null,_attachSupplier=null,_attachLineIndex=null;
+let _unsubscribers=[];
+
+/* ═══════════════════════════════════════════
+   SYNC DOT
+═══════════════════════════════════════════ */
+function syncDot(state){const d=document.getElementById("syncDot");if(!d)return;d.className="sync-dot "+state;}
+
+/* ═══════════════════════════════════════════
+   AUTH
+═══════════════════════════════════════════ */
+window.doLogin=async function(){
+  const email=document.getElementById("loginEmail").value.trim();
+  const pass=document.getElementById("loginPassword").value;
+  const err=document.getElementById("loginError");
+  const btn=document.getElementById("loginBtn");
+  err.style.display="none";btn.disabled=true;btn.textContent="Entrando…";
+  try{
+    await signInWithEmailAndPassword(auth,email,pass);
+  }catch(e){
+    err.textContent="Email o contraseña incorrectos.";
+    err.style.display="block";btn.disabled=false;btn.textContent="Entrar";
+  }
+};
+
+window.doLogout=async function(){
+  _unsubscribers.forEach(u=>u());_unsubscribers=[];
+  await signOut(auth);
+};
+
+onAuthStateChanged(auth,user=>{
+  if(user){
+    document.getElementById("loginScreen").style.display="none";
+    document.getElementById("appContainer").style.display="block";
+    document.getElementById("userEmailLabel").textContent=user.email;
+    startRealtimeListeners();
+  } else {
+    document.getElementById("loginScreen").style.display="flex";
+    document.getElementById("appContainer").style.display="none";
+    document.getElementById("loginBtn").disabled=false;
+    document.getElementById("loginBtn").textContent="Entrar";
+  }
+});
+
+/* ═══════════════════════════════════════════
+   FIRESTORE REALTIME LISTENERS
+═══════════════════════════════════════════ */
+function startRealtimeListeners(){
+  syncDot("syncing");
+
+  // settings (serviceTypes, customers, suppliers)
+  const u1=onSnapshot(doc(db,"app","settings"),snap=>{
+    if(snap.exists()){
+      const d=snap.data();
+      data.serviceTypes=d.serviceTypes||[...defaultServices];
+      data.customers=(d.customers||[]).map(c=>({name:c.name,logo:c.logo||"",projects:c.projects||[]}));
+      data.suppliers=(d.suppliers||[]).map(s=>({name:s.name,location:s.location||"",contact:s.contact||"",email:s.email||"",phone:s.phone||"",services:s.services||[]}));
+    } else {
+      data.serviceTypes=[...defaultServices];data.customers=[];data.suppliers=[];
+    }
+    updateAllSelects();renderCustomersList();renderSuppliersList();renderRFQList();
+    syncDot("ok");
+  },()=>syncDot("error"));
+
+  // rfqs collection
+  const u2=onSnapshot(collection(db,"rfqs"),snap=>{
+    data.rfqs=[];
+    snap.forEach(d=>{
+      const r=d.data();r.id=d.id;
+      if(!Array.isArray(r.npiPos))r.npiPos=[];
+      if(!r.suppliers)r.suppliers={};
+      if(!Array.isArray(r.pns))r.pns=r.pn?[r.pn]:[];
+      data.rfqs.push(r);
+    });
+    data.rfqs.sort((a,b)=>new Date(b.updatedAt||0)-new Date(a.updatedAt||0));
+    renderRFQList();
+    syncDot("ok");
+  },()=>syncDot("error"));
+
+  _unsubscribers=[u1,u2];
+}
+
+/* ═══════════════════════════════════════════
+   PERSIST HELPERS
+═══════════════════════════════════════════ */
+async function saveSettings(){
+  syncDot("syncing");
+  try{
+    await setDoc(doc(db,"app","settings"),{
+      serviceTypes:data.serviceTypes,
+      customers:data.customers,
+      suppliers:data.suppliers
+    });
+    syncDot("ok");
+  }catch(e){syncDot("error");toast("Error guardando","warn");}
+}
+
+async function saveRFQ(rfq){
+  syncDot("syncing");
+  try{
+    const id=String(rfq.id);
+    await setDoc(doc(db,"rfqs",id),rfq);
+    syncDot("ok");
+  }catch(e){syncDot("error");toast("Error guardando RFQ","warn");}
+}
+
+async function deleteRFQDoc(rfqId){
+  syncDot("syncing");
+  try{await deleteDoc(doc(db,"rfqs",String(rfqId)));syncDot("ok");}
+  catch(e){syncDot("error");toast("Error borrando","warn");}
+}
+
+/* ═══════════════════════════════════════════
+   CLOUDINARY UPLOAD
+═══════════════════════════════════════════ */
+async function uploadToCloudinary(file){
+  const fd=new FormData();
+  fd.append("file",file);
+  fd.append("upload_preset",UPLOAD_PRESET);
+  fd.append("folder","rfq-hub");
+  const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,{method:"POST",body:fd});
+  if(!res.ok)throw new Error("Cloudinary upload failed");
+  const json=await res.json();
+  return {url:json.secure_url,publicId:json.public_id,name:file.name};
+}
+
+/* ═══════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════ */
+function toast(msg,type){const wrap=document.getElementById("toastWrap");if(!wrap)return;const el=document.createElement("div");el.className="toast"+(type?" "+type:"");el.textContent=msg;wrap.appendChild(el);setTimeout(()=>el.remove(),type==="warn"?4000:2400);}
+function pulseButton(btn,ms=180){if(!btn)return;btn.disabled=true;btn.classList.add("clicked");setTimeout(()=>{btn.disabled=false;btn.classList.remove("clicked");},ms);}
+function sortAlpha(arr,key){return [...arr].sort((a,b)=>(a[key]||"").localeCompare(b[key]||""));}
+function sortedCustomers(){return sortAlpha(data.customers,"name");}
+function sortedSuppliers(){return sortAlpha(data.suppliers,"name");}
+function statusClass(s){return s==="PENDING"?"pending":s==="QUOTED"?"quoted":"transferred";}
+function truncate(t,max=90){return !t?"":(t.length>max?t.slice(0,max)+"...":t);}
+function sanitizeId(str){return String(str).replace(/[^a-zA-Z0-9_-]/g,"_");}
+function logoOrFallback(c){if(c.logo)return '<div class="logo-thumb"><img src="'+c.logo+'" alt="'+c.name+'"/></div>';return '<div class="logo-thumb" style="font-weight:700;color:var(--muted);font-size:20px;">'+c.name.slice(0,1)+'</div>';}
+function pnDisplay(r){const pns=(r.pns&&r.pns.length)?r.pns:[r.pn].filter(Boolean);return pns.join(" · ");}
+function fileIconForName(name){const ext=(name||"").split(".").pop().toLowerCase();if(ext==="pdf")return "📄";if(["msg","eml"].includes(ext))return "📧";if(["xls","xlsx"].includes(ext))return "📊";if(["doc","docx"].includes(ext))return "📝";if(["png","jpg","jpeg","gif","webp"].includes(ext))return "🖼️";return "📎";}
+function attachBadgeHtml(count){if(!count)return "";return '<span style="position:absolute;top:-5px;right:-5px;background:var(--brand);color:#fff;border-radius:50%;font-size:9px;width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-weight:800;">'+count+'</span>';}
+function getRFQByModalIndex(){const id=document.getElementById("editRFQIndex").value;const idx=data.rfqs.findIndex(r=>String(r.id)===String(id));return{idx,rfq:data.rfqs[idx]};}
+
+/* ═══════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════ */
+window.switchTab=function(tabName,evt){
+  document.querySelectorAll(".tab-content").forEach(el=>el.classList.remove("active"));
+  document.querySelectorAll(".tab-button").forEach(el=>el.classList.remove("active"));
+  document.getElementById(tabName).classList.add("active");
+  if(evt&&evt.target)evt.target.classList.add("active");
+  else{const map={"new-rfq":0,"rfq-list":1,"customers":2,"suppliers":3};const btns=document.querySelectorAll(".tab-button");if(btns[map[tabName]])btns[map[tabName]].classList.add("active");}
+  if(tabName==="rfq-list"){updateFilterSelects();renderRFQList();}
+  if(tabName==="customers")renderCustomersList();
+  if(tabName==="suppliers"){updateSupplierFilter();renderSuppliersList();}
+};
+
+window.goToProjectRFQs=function(customerName,projectName){
+  populateFilterCustomer();document.getElementById("filterCustomer").value=customerName;
+  populateFilterProject(customerName);document.getElementById("filterProject").value=projectName;
+  document.getElementById("filterStatus").value="";
+  const pn=document.getElementById("filterPN");const pd=document.getElementById("filterPNDescription");
+  if(pn)pn.value="";if(pd)pd.value="";
+  data.filters={customer:customerName,project:projectName,status:"",pn:"",pnDescription:""};
+  switchTab("rfq-list");renderRFQList();
+};
+
+/* ═══════════════════════════════════════════
+   SELECTS
+═══════════════════════════════════════════ */
+function updateAllSelects(){updateCustomerSelects();updateSupplierFilter();}
+function populateNewCustomer(){const sel=document.getElementById("newCustomer");const cur=sel.value;sel.innerHTML='<option value="">-- Select Customer --</option>'+sortedCustomers().map(c=>'<option value="'+c.name+'">'+c.name+'</option>').join("");if(cur)sel.value=cur;}
+function populateNewProject(customerName){const sel=document.getElementById("newProject");if(!customerName){sel.innerHTML='<option value="">-- Select Project --</option>';return;}const c=data.customers.find(x=>x.name===customerName);const projs=c?[...c.projects].sort((a,b)=>a.localeCompare(b)):[];sel.innerHTML='<option value="">-- Select Project --</option>'+projs.map(p=>'<option value="'+p+'">'+p+'</option>').join("");}
+window.onNewCustomerChange=function(){populateNewProject(document.getElementById("newCustomer").value);};
+function populateFilterCustomer(){const sel=document.getElementById("filterCustomer");const cur=sel.value;sel.innerHTML='<option value="">-- All Customers --</option>'+sortedCustomers().map(c=>'<option value="'+c.name+'">'+c.name+'</option>').join("");if(cur)sel.value=cur;}
+function populateFilterProject(customerName){const sel=document.getElementById("filterProject");const cur=sel.value;let opts;if(customerName){const c=data.customers.find(x=>x.name===customerName);opts=c?[...c.projects].sort((a,b)=>a.localeCompare(b)):[];}else{opts=[...new Set(data.customers.flatMap(c=>c.projects))].sort((a,b)=>a.localeCompare(b));}sel.innerHTML='<option value="">-- All Projects --</option>'+opts.map(p=>'<option value="'+p+'">'+p+'</option>').join("");if(cur&&opts.includes(cur))sel.value=cur;}
+window.onFilterCustomerChange=function(){populateFilterProject(document.getElementById("filterCustomer").value);applyFilters();};
+function updateFilterSelects(){populateFilterCustomer();populateFilterProject(document.getElementById("filterCustomer").value);}
+function updateCustomerSelects(){populateNewCustomer();populateFilterCustomer();populateFilterProject(document.getElementById("filterCustomer").value);}
+function populateEditRFQCustomer(cur){const sel=document.getElementById("editRFQCustomer");sel.innerHTML='<option value="">-- Select Customer --</option>'+sortedCustomers().map(c=>'<option value="'+c.name+'">'+c.name+'</option>').join("");sel.value=cur||"";}
+function populateEditRFQProject(customerName,cur){const sel=document.getElementById("editRFQProject");if(!customerName){sel.innerHTML='<option value="">-- Select Project --</option>';return;}const c=data.customers.find(x=>x.name===customerName);const projs=c?[...c.projects].sort((a,b)=>a.localeCompare(b)):[];sel.innerHTML='<option value="">-- Select Project --</option>'+projs.map(p=>'<option value="'+p+'">'+p+'</option>').join("");sel.value=cur||"";}
+window.onEditRFQCustomerChange=function(){populateEditRFQProject(document.getElementById("editRFQCustomer").value,"");};
+function updateSupplierFilter(){const sel=document.getElementById("supplierServiceFilter");const cur=sel.value;sel.innerHTML='<option value="">-- All Services --</option>'+data.serviceTypes.map(s=>'<option value="'+s+'">'+s+'</option>').join("");sel.value=cur||"";}
+
+/* ═══════════════════════════════════════════
+   MULTI-PN
+═══════════════════════════════════════════ */
+function renderPNTags(ctx){const wrap=document.getElementById(ctx==="new"?"newPNWrap":"editPNWrap");const input=document.getElementById(ctx==="new"?"newPNInput":"editPNInput");wrap.querySelectorAll(".pn-tag").forEach(t=>t.remove());pnState[ctx].forEach((pn,i)=>{const tag=document.createElement("span");tag.className="pn-tag";tag.innerHTML=pn+'<button class="pn-tag-x" onclick="removePN(\''+ctx+'\','+i+')">\xd7</button>';wrap.insertBefore(tag,input);});}
+function addPNFromInput(ctx){const input=document.getElementById(ctx==="new"?"newPNInput":"editPNInput");const val=input.value.trim();if(!val)return;if(pnState[ctx].includes(val)){toast("Part number already added.");return;}pnState[ctx].push(val);input.value="";renderPNTags(ctx);}
+window.removePN=function(ctx,i){pnState[ctx].splice(i,1);renderPNTags(ctx);};
+window.pnKeydown=function(evt,ctx){if(evt.key==="Enter"||evt.key===","||evt.key===";"){evt.preventDefault();addPNFromInput(ctx);}else if(evt.key==="Backspace"){const input=document.getElementById(ctx==="new"?"newPNInput":"editPNInput");if(input.value===""&&pnState[ctx].length>0){pnState[ctx].pop();renderPNTags(ctx);}}};
+
+/* ═══════════════════════════════════════════
+   DRAWING UI — Cloudinary based
+═══════════════════════════════════════════ */
+function renderNewDrawingUI(){const box=document.getElementById("newDrawingUI");if(!newDrawingTemp.url){box.innerHTML='<button class="secondary" onclick="document.getElementById(\'newRFQPdfHidden\').click()">Upload 2D Drawing</button>';}else{box.innerHTML='<div class="upload-chip"><span class="filename">📄 '+newDrawingTemp.name+'</span><button class="chip-x" onclick="removeNewDrawing()">\u2715</button></div>';}}
+window.removeNewDrawing=function(){newDrawingTemp={url:null,name:""};document.getElementById("newRFQPdfHidden").value="";renderNewDrawingUI();};
+window.onNewDrawingSelected=async function(input){
+  const file=input.files[0];if(!file)return;
+  if(file.type!=="application/pdf"){toast("Only PDF files are allowed.","warn");input.value="";return;}
+  toast("Uploading drawing…");
+  try{const res=await uploadToCloudinary(file);newDrawingTemp={url:res.url,name:res.name};renderNewDrawingUI();toast("Drawing ready","ok");}
+  catch(e){toast("Upload failed","warn");}
+};
+
+function renderEditDrawingActions(rfq){
+  const box=document.getElementById("editPdfActions");
+  if(!rfq.drawing2DUrl){box.innerHTML='<button class="secondary" onclick="document.getElementById(\'editRFQReplaceHidden\').click()">Upload</button>';return;}
+  box.innerHTML='<div class="upload-chip"><span class="filename">📄 '+(rfq.drawing2DName||"drawing.pdf")+'</span>'
+    +'<div style="display:flex;gap:6px;margin-left:6px;">'
+    +'<a href="'+rfq.drawing2DUrl+'" target="_blank"><button class="secondary" style="padding:4px 10px;font-size:12px;">Preview</button></a>'
+    +'<a href="'+rfq.drawing2DUrl+'" download="'+(rfq.drawing2DName||"drawing.pdf")+'"><button class="secondary" style="padding:4px 10px;font-size:12px;">Download</button></a>'
+    +'<button class="secondary" style="padding:4px 10px;font-size:12px;" onclick="document.getElementById(\'editRFQReplaceHidden\').click()">Replace</button>'
+    +'</div>'
+    +'<button class="chip-x" style="margin-left:4px;" onclick="deleteDrawingFromRFQ()">\u2715</button></div>';
+}
+
+window.deleteDrawingFromRFQ=function(){
+  if(!confirm("Remove this drawing?"))return;
+  const{rfq}=getRFQByModalIndex();
+  rfq.drawing2DUrl="";rfq.drawing2DName="";rfq.hasDrawing=false;rfq.updatedAt=new Date().toISOString();
+  saveRFQ(rfq);renderEditDrawingActions(rfq);toast("Drawing removed","ok");
+};
+
+window.onReplaceDrawingSelected=async function(input){
+  const file=input.files[0];input.value="";if(!file)return;
+  if(file.type!=="application/pdf")return toast("Only PDF files are allowed.","warn");
+  toast("Uploading…");
+  try{
+    const res=await uploadToCloudinary(file);
+    const{rfq}=getRFQByModalIndex();
+    rfq.drawing2DUrl=res.url;rfq.drawing2DName=res.name;rfq.hasDrawing=true;rfq.updatedAt=new Date().toISOString();
+    await saveRFQ(rfq);renderEditDrawingActions(rfq);toast("Drawing updated","ok");
+  }catch(e){toast("Upload failed","warn");}
+};
+
+function rfqCardDrawingActions(r){
+  if(!r.drawing2DUrl)return"";
+  return '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;" onclick="event.stopPropagation();">'
+    +'<span style="font-size:12px;color:var(--muted);">📄 '+(r.drawing2DName||"drawing.pdf")+'</span>'
+    +'<a href="'+r.drawing2DUrl+'" target="_blank"><button class="secondary">Preview PDF</button></a>'
+    +'<a href="'+r.drawing2DUrl+'" download><button class="secondary">Download PDF</button></a>'
+    +'</div>';
+}
+
+/* ═══════════════════════════════════════════
+   LOGO UI — Cloudinary based
+═══════════════════════════════════════════ */
+function renderNewCustomerLogoUI(){const box=document.getElementById("newCustomerLogoUI");if(!newLogoTemp.url){box.innerHTML='<button class="secondary" onclick="document.getElementById(\'newCustomerLogoFile\').click()">Upload Logo</button>';}else{box.innerHTML='<div class="upload-chip"><img src="'+newLogoTemp.url+'" style="height:24px;width:auto;border-radius:3px;"/><span class="filename">'+newLogoTemp.name+'</span><button class="chip-x" onclick="removeNewLogo()">\u2715</button></div>';}}
+window.removeNewLogo=function(){newLogoTemp={url:null,name:""};document.getElementById("newCustomerLogoFile").value="";renderNewCustomerLogoUI();};
+window.onNewLogoSelected=async function(input){
+  const file=input.files[0];if(!file)return;
+  toast("Uploading logo…");
+  try{const res=await uploadToCloudinary(file);newLogoTemp={url:res.url,name:res.name};renderNewCustomerLogoUI();toast("Logo ready","ok");}
+  catch(e){toast("Upload failed","warn");}
+};
+
+window.openEditCustomerModal=function(idx){
+  const c=data.customers[idx];
+  document.getElementById("editCustomerIndex").value=idx;
+  document.getElementById("editCustomerModalTitle").textContent="Edit — "+c.name;
+  document.getElementById("editCustomerNameInput").value=c.name;
+  editLogoTemp={url:c.logo||null,name:c.logo?"current logo":""};
+  renderEditLogoUI();document.getElementById("editCustomerModal").classList.add("active");
+};
+window.closeEditCustomerModal=function(){document.getElementById("editCustomerModal").classList.remove("active");editLogoTemp={url:null,name:""};document.getElementById("editLogoFileInput").value="";};
+function renderEditLogoUI(){const box=document.getElementById("editLogoUI");if(!editLogoTemp.url){box.innerHTML='<button class="secondary" onclick="document.getElementById(\'editLogoFileInput\').click()">Upload Logo</button>';}else{box.innerHTML='<div class="upload-chip"><img src="'+editLogoTemp.url+'" style="height:24px;width:auto;border-radius:3px;"/><span class="filename">'+editLogoTemp.name+'</span><button class="chip-x" onclick="removeEditLogo()">\u2715</button></div>';}}
+window.removeEditLogo=function(){editLogoTemp={url:null,name:""};document.getElementById("editLogoFileInput").value="";renderEditLogoUI();};
+window.onEditLogoSelected=async function(input){
+  const file=input.files[0];if(!file)return;
+  toast("Uploading logo…");
+  try{const res=await uploadToCloudinary(file);editLogoTemp={url:res.url,name:res.name};renderEditLogoUI();toast("Logo ready","ok");}
+  catch(e){toast("Upload failed","warn");}
+};
+window.saveCustomerEdits=async function(btn){
+  pulseButton(btn);const idx=Number(document.getElementById("editCustomerIndex").value);
+  const newName=document.getElementById("editCustomerNameInput").value.trim();
+  if(!newName)return toast("Customer name is required.");
+  const oldName=data.customers[idx].name;
+  if(data.customers.some((c,i)=>i!==idx&&c.name.toLowerCase()===newName.toLowerCase()))return toast("Customer name already exists.");
+  data.customers[idx].name=newName;data.customers[idx].logo=editLogoTemp.url||"";
+  if(oldName!==newName){
+    data.rfqs.forEach(r=>{if(r.customer===oldName){r.customer=newName;saveRFQ(r);}});
+  }
+  await saveSettings();renderCustomersList();updateCustomerSelects();renderRFQList();closeEditCustomerModal();toast("Customer updated","ok");
+};
+
+/* ═══════════════════════════════════════════
+   CUSTOMERS
+═══════════════════════════════════════════ */
+window.addCustomer=async function(btn){
+  pulseButton(btn);const name=document.getElementById("newCustomerName").value.trim();
+  if(!name)return toast("Customer name is required.");
+  if(data.customers.some(c=>c.name.toLowerCase()===name.toLowerCase()))return toast("Customer already exists.");
+  data.customers.push({name,logo:newLogoTemp.url||"",projects:[]});
+  document.getElementById("newCustomerName").value="";newLogoTemp={url:null,name:""};
+  document.getElementById("newCustomerLogoFile").value="";renderNewCustomerLogoUI();
+  await saveSettings();renderCustomersList();updateCustomerSelects();toast("Customer added","ok");
+};
+window.deleteCustomer=async function(index){
+  if(!confirm('Delete customer "'+data.customers[index].name+'"?'))return;
+  data.customers.splice(index,1);await saveSettings();renderCustomersList();updateCustomerSelects();renderRFQList();
+};
+window.toggleCustomerProjects=function(index){const box=document.getElementById("cust-projects-"+index);const btn=document.getElementById("cust-expand-"+index);if(!box||!btn)return;box.classList.toggle("active");btn.textContent=box.classList.contains("active")?"\u2212":"+";};
+window.addProjectToCustomer=async function(index){
+  const input=document.getElementById("newProject-"+index);const project=input.value.trim();
+  if(!project)return toast("Project name is required.");
+  if(data.customers[index].projects.includes(project))return toast("Project already exists.");
+  data.customers[index].projects.push(project);input.value="";
+  await saveSettings();renderCustomersList();updateCustomerSelects();toast("Project added","ok");
+};
+window.deleteProject=async function(ci,pi){
+  if(!confirm("Delete this project?"))return;
+  data.customers[ci].projects.splice(pi,1);await saveSettings();renderCustomersList();updateCustomerSelects();
+};
+
+function renderCustomersList(){
+  const list=document.getElementById("customersList");if(!list)return;
+  const sorted=sortedCustomers();
+  list.innerHTML=sorted.map(c=>{
+    const i=data.customers.indexOf(c);
+    const sortedProjects=[...c.projects].sort((a,b)=>a.localeCompare(b));
+    return '<div class="settings-item"><div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><div class="customer-head-left">'+logoOrFallback(c)+'<div><div style="font-weight:800">'+c.name+'</div><div class="small-muted">'+c.projects.length+' project(s)</div></div></div><div style="display:flex;gap:8px;align-items:center;"><button class="secondary" style="font-size:12px;padding:7px 11px;" onclick="openEditCustomerModal('+i+')">Edit</button><button class="expand-btn" id="cust-expand-'+i+'" onclick="toggleCustomerProjects('+i+')">+</button><button class="danger" onclick="deleteCustomer('+i+')">Delete</button></div></div><div class="customer-projects" id="cust-projects-'+i+'"><div style="display:grid;gap:6px;margin-top:10px;">'+(sortedProjects.length?sortedProjects.map(p=>{const pi=c.projects.indexOf(p);return '<div class="project-row-item"><button class="project-name-btn" onclick="goToProjectRFQs(\''+c.name.replace(/'/g,"\\'")+'\',\''+p.replace(/'/g,"\\'")+'\')">'+p+'</button><button class="danger" onclick="deleteProject('+i+','+pi+')">Delete</button></div>';}).join(""):'<div class="small-muted">No projects yet.</div>')+'</div><div style="display:flex;gap:8px;margin-top:8px;"><input type="text" id="newProject-'+i+'" style="flex:1" placeholder="New project name"/><button class="primary" onclick="addProjectToCustomer('+i+')">Add</button></div></div></div></div>';
+  }).join("");
+}
+
+/* ═══════════════════════════════════════════
+   SUPPLIERS
+═══════════════════════════════════════════ */
+function renderSuppliersList(){
+  const filter=document.getElementById("supplierServiceFilter").value;
+  const filtered=sortedSuppliers().filter(s=>!filter||(s.services||[]).includes(filter));
+  const list=document.getElementById("suppliersList");if(!list)return;
+  list.innerHTML=filtered.length?filtered.map(s=>{const idx=data.suppliers.indexOf(s);return '<div class="settings-item"><div style="flex:1"><div class="supplier-name-label">'+s.name+'</div><div class="small-muted">📍 '+(s.location||"-")+'</div>'+(s.contact?'<div class="small-muted">👤 '+s.contact+'</div>':'')+'<div class="small-muted">✉️ '+(s.email||"-")+' · ☎️ '+(s.phone||"-")+'</div><div class="service-tags">'+(s.services||[]).map(x=>'<span class="service-tag">'+x+'</span>').join("")+'</div></div><div style="display:flex;gap:8px;flex-shrink:0;"><button class="secondary" onclick="openSupplierModal('+idx+')">Edit</button><button class="danger" onclick="deleteSupplier('+idx+')">Delete</button></div></div>';}).join(""):'<div class="empty-state"><h3>No suppliers found</h3></div>';
+}
+function renderServicesChecks(selected){selected=selected||[];document.getElementById("supplierServicesOptions").innerHTML=[...data.serviceTypes].sort((a,b)=>a.localeCompare(b)).map(s=>'<label style="display:flex;gap:8px;align-items:center;"><input type="checkbox" class="service-check" value="'+s+'" '+(selected.includes(s)?"checked":"")+'"/><span>'+s+'</span></label>').join("");}
+window.openSupplierModal=function(index){if(index===undefined||index===null)index=null;document.getElementById("supplierModal").classList.add("active");document.getElementById("supplierEditIndex").value=index===null?"":String(index);document.getElementById("supplierModalTitle").textContent=index===null?"Add Supplier":"Edit Supplier";if(index===null){["supplierName","supplierLocation","supplierContact","supplierEmail","supplierPhone"].forEach(id=>document.getElementById(id).value="");renderServicesChecks([]);}else{const s=data.suppliers[index];document.getElementById("supplierName").value=s.name||"";document.getElementById("supplierLocation").value=s.location||"";document.getElementById("supplierContact").value=s.contact||"";document.getElementById("supplierEmail").value=s.email||"";document.getElementById("supplierPhone").value=s.phone||"";renderServicesChecks(s.services||[]);}};
+window.closeSupplierModal=function(){document.getElementById("supplierModal").classList.remove("active");};
+window.openAddServiceModal=function(){document.getElementById("addServiceModal").classList.add("active");setTimeout(()=>document.getElementById("newServiceInput").focus(),80);};
+window.closeAddServiceModal=function(){document.getElementById("addServiceModal").classList.remove("active");document.getElementById("newServiceInput").value="";};
+window.addServiceType=async function(){const input=document.getElementById("newServiceInput");const value=input.value.trim().toUpperCase();if(!value)return;if(data.serviceTypes.includes(value))return toast("Service already exists.");data.serviceTypes.push(value);data.serviceTypes=[...new Set(data.serviceTypes)].sort((a,b)=>a.localeCompare(b));const selected=Array.from(document.querySelectorAll(".service-check:checked")).map(x=>x.value);renderServicesChecks(selected);updateSupplierFilter();await saveSettings();toast("Service type added","ok");closeAddServiceModal();};
+window.saveSupplierFromModal=async function(btn){
+  pulseButton(btn);const idx=document.getElementById("supplierEditIndex").value;
+  const name=document.getElementById("supplierName").value.trim();const location=document.getElementById("supplierLocation").value.trim();
+  const contact=document.getElementById("supplierContact").value.trim();const email=document.getElementById("supplierEmail").value.trim();
+  const phone=document.getElementById("supplierPhone").value.trim();
+  const services=Array.from(document.querySelectorAll(".service-check:checked")).map(x=>x.value);
+  if(!name)return toast("Supplier name is required.");if(!location)return toast("Location is required.");if(!services.length)return toast("Select at least one service.");
+  const dup=data.suppliers.findIndex((s,i)=>s.name.toLowerCase()===name.toLowerCase()&&String(i)!==String(idx));if(dup>-1)return toast("Supplier already exists.");
+  const payload={name,location,contact,email,phone,services};
+  if(idx===""){data.suppliers.push(payload);}
+  else{const oldName=data.suppliers[Number(idx)].name;data.suppliers[Number(idx)]=payload;if(oldName!==name){data.rfqs.forEach(r=>{if(r.suppliers&&r.suppliers[oldName]){r.suppliers[name]=r.suppliers[oldName];delete r.suppliers[oldName];saveRFQ(r);}});}}
+  await saveSettings();closeSupplierModal();updateSupplierFilter();renderSuppliersList();renderRFQList();toast("Supplier saved","ok");
+};
+window.deleteSupplier=async function(index){
+  const s=data.suppliers[index];if(!confirm('Delete supplier "'+s.name+'"?'))return;
+  data.rfqs.forEach(r=>{if(r.suppliers&&r.suppliers[s.name]){delete r.suppliers[s.name];saveRFQ(r);}});
+  data.suppliers.splice(index,1);await saveSettings();renderSuppliersList();renderRFQList();toast("Supplier deleted");
+};
+
+/* ═══════════════════════════════════════════
+   FILTERS
+═══════════════════════════════════════════ */
+window.applyFilters=function(){data.filters.customer=document.getElementById("filterCustomer").value;data.filters.project=document.getElementById("filterProject").value;data.filters.status=document.getElementById("filterStatus").value;data.filters.pn=(document.getElementById("filterPN")?.value||"").trim().toLowerCase();data.filters.pnDescription=(document.getElementById("filterPNDescription")?.value||"").trim().toLowerCase();renderRFQList();};
+window.clearFilters=function(){document.getElementById("filterCustomer").value="";populateFilterProject("");document.getElementById("filterProject").value="";document.getElementById("filterStatus").value="";const p=document.getElementById("filterPN");const pd=document.getElementById("filterPNDescription");if(p)p.value="";if(pd)pd.value="";data.filters={customer:"",project:"",status:"",pn:"",pnDescription:""};renderRFQList();};
+
+/* ═══════════════════════════════════════════
+   CREATE RFQ
+═══════════════════════════════════════════ */
+window.createNewRFQ=async function(btn){
+  pulseButton(btn);
+  const customer=document.getElementById("newCustomer").value;const project=document.getElementById("newProject").value;
+  addPNFromInput("new");
+  if(!customer||!project||pnState.new.length===0)return toast("Customer, Project and at least one Part Number are required.");
+  const sapPn=document.getElementById("newSapPN").value.trim();const eau=document.getElementById("newEAU").value.trim();
+  const pnDescription=document.getElementById("newPNDescription").value.trim();const processNeeded=document.getElementById("newProcessNeeded").value.trim();
+  const status=document.getElementById("newStatus").value;
+  const newId=String(Date.now());const nowIso=new Date().toISOString();
+  const rfq={id:newId,customer,project,pns:[...pnState.new],pn:pnState.new[0]||"",sapPn,eau,pnDescription,processNeeded,status,drawing2DUrl:newDrawingTemp.url||"",drawing2DName:newDrawingTemp.name||"",hasDrawing:!!newDrawingTemp.url,suppliers:{},npiPos:[],createdAt:nowIso,updatedAt:nowIso};
+  await saveRFQ(rfq);
+  document.getElementById("newCustomer").value="";populateNewProject("");
+  document.getElementById("newSapPN").value="";document.getElementById("newEAU").value="";
+  document.getElementById("newPNDescription").value="";document.getElementById("newProcessNeeded").value="";
+  document.getElementById("newStatus").value="PENDING";pnState.new=[];renderPNTags("new");
+  newDrawingTemp={url:null,name:""};renderNewDrawingUI();
+  updateFilterSelects();switchTab("rfq-list");
+  toast("RFQ created ✓","ok");
+};
+
+/* ═══════════════════════════════════════════
+   RFQ LIST
+═══════════════════════════════════════════ */
+function renderRFQList(){
+  const fmt=(iso)=>{if(!iso)return"-";const d=new Date(iso);return isNaN(d)?"-":d.toLocaleString();};
+  const filtered=data.rfqs.filter(r=>{
+    if(data.filters.customer&&r.customer!==data.filters.customer)return false;
+    if(data.filters.project&&r.project!==data.filters.project)return false;
+    if(data.filters.status&&r.status!==data.filters.status)return false;
+    const pns=((r.pns&&r.pns.length?r.pns:[r.pn]).filter(Boolean)).map(p=>p.toLowerCase());
+    if(data.filters.pn&&!pns.some(p=>p.includes(data.filters.pn)))return false;
+    if(data.filters.pnDescription&&!(r.pnDescription||"").toLowerCase().includes(data.filters.pnDescription))return false;
+    return true;
+  });
+  const target=document.getElementById("rfqListContainer");if(!target)return;
+  target.innerHTML=filtered.length
+    ?filtered.map(r=>{const index=data.rfqs.findIndex(x=>x.id===r.id);return '<div class="rfq-card" onclick="openRFQModal(\''+r.id+'\')"><div class="rfq-head"><div class="rfq-title">'+pnDisplay(r)+'</div><div class="rfq-dates"><div>Created: '+fmt(r.createdAt)+'</div><div>Updated: '+fmt(r.updatedAt||r.createdAt)+'</div></div></div><div class="rfq-meta"><span class="badge customer">'+r.customer+'</span><span class="badge project">'+r.project+'</span><span class="badge '+statusClass(r.status)+'">'+r.status+'</span></div>'+(r.pnDescription?'<div style="margin-top:8px;font-size:13px;color:var(--ink-2);">'+truncate(r.pnDescription,140)+'</div>':"")+(r.processNeeded?'<div style="margin-top:4px;font-size:12px;color:var(--muted);">'+truncate(r.processNeeded,140)+'</div>':"")+ rfqCardDrawingActions(r)+'</div>';}).join("")
+    :'<div class="empty-state"><h3>No RFQs found</h3><p>'+(data.rfqs.length?"No results match your filters.":"Create your first RFQ to get started.")+'</p></div>';
+}
+
+/* ═══════════════════════════════════════════
+   RFQ MODAL
+═══════════════════════════════════════════ */
+window.openRFQModal=function(rfqId){
+  const r=data.rfqs.find(x=>String(x.id)===String(rfqId));if(!r)return;
+  if(!Array.isArray(r.npiPos))r.npiPos=[];if(!r.suppliers)r.suppliers={};if(!Array.isArray(r.pns))r.pns=r.pn?[r.pn]:[];
+  document.getElementById("editRFQIndex").value=String(r.id);
+  populateEditRFQCustomer(r.customer);populateEditRFQProject(r.customer,r.project);
+  document.getElementById("editRFQSapPN").value=r.sapPn||"";document.getElementById("editRFQEAU").value=r.eau||"";
+  document.getElementById("editRFQPNDescription").value=r.pnDescription||"";document.getElementById("editRFQProcessNeeded").value=r.processNeeded||"";
+  document.getElementById("editRFQStatus").value=r.status||"PENDING";
+  pnState.edit=[...r.pns];renderPNTags("edit");
+  renderEditDrawingActions(r);renderRFQSuppliersChips(r);
+  document.getElementById("quotesBody").classList.remove("active");document.getElementById("poBody").classList.remove("active");
+  renderRFQQuotesSection(r);renderRFQPOSection(r);
+  document.getElementById("rfqModal").classList.add("active");
+};
+window.closeRFQModal=function(){document.getElementById("rfqModal").classList.remove("active");};
+
+function renderRFQSuppliersChips(r){const names=Object.keys(r.suppliers||{});document.getElementById("rfqSuppliersChips").innerHTML=names.length?names.map(name=>'<span class="supplier-chip">'+name+'<button class="chip-x small" onclick="removeSupplierFromRFQModal(\''+name+'\')">\u2715</button></span>').join(""):'<div class="small-muted">No suppliers associated yet.</div>';}
+window.openAssocCenterModal=function(btn){pulseButton(btn);const{rfq}=getRFQByModalIndex();const used=Object.keys(rfq.suppliers||{});const available=sortedSuppliers().filter(s=>!used.includes(s.name));document.getElementById("associatedSupplierSelect").innerHTML='<option value="">-- Select supplier --</option>'+available.map(s=>'<option value="'+s.name+'">'+s.name+'</option>').join("");document.getElementById("assocCenterModal").classList.add("active");};
+window.closeAssocCenterModal=function(){document.getElementById("assocCenterModal").classList.remove("active");};
+window.confirmAddAssociatedSupplier=async function(btn){pulseButton(btn);const{rfq}=getRFQByModalIndex();const selected=document.getElementById("associatedSupplierSelect").value;if(!selected)return toast("Please select a supplier.");rfq.suppliers[selected]=rfq.suppliers[selected]||[];rfq.updatedAt=new Date().toISOString();await saveRFQ(rfq);renderRFQSuppliersChips(rfq);renderRFQQuotesSection(rfq);renderRFQPOSection(rfq);closeAssocCenterModal();toast("Supplier added","ok");};
+window.removeSupplierFromRFQModal=async function(name){const{rfq}=getRFQByModalIndex();delete rfq.suppliers[name];rfq.updatedAt=new Date().toISOString();await saveRFQ(rfq);renderRFQSuppliersChips(rfq);renderRFQQuotesSection(rfq);renderRFQPOSection(rfq);toast("Supplier removed");};
+window.toggleSectionBody=function(id){const el=document.getElementById(id);if(!el)return;el.classList.toggle("active");};
+window.openNoteModal=function(type,supplierName,index){const{rfq}=getRFQByModalIndex();let note="";if(type==="quote"){note=((rfq.suppliers[supplierName]||[])[index]||{}).note||"";document.getElementById("noteModalTitle").textContent="Quote Note — "+supplierName+" / Line "+(index+1);}else{note=(rfq.npiPos[index]||{}).note||"";document.getElementById("noteModalTitle").textContent="PO Note — Line "+(index+1);}document.getElementById("noteType").value=type;document.getElementById("noteSupplier").value=supplierName||"";document.getElementById("noteIndex").value=String(index);document.getElementById("noteText").value=note;document.getElementById("noteModal").classList.add("active");};
+window.closeNoteModal=function(){document.getElementById("noteModal").classList.remove("active");};
+window.saveLineNote=async function(){const{rfq}=getRFQByModalIndex();const type=document.getElementById("noteType").value;const supplier=document.getElementById("noteSupplier").value;const index=Number(document.getElementById("noteIndex").value);const note=document.getElementById("noteText").value.trim();if(type==="quote"){if(!rfq.suppliers[supplier]||!rfq.suppliers[supplier][index])return;rfq.suppliers[supplier][index].note=note;}else{if(!rfq.npiPos[index])return;rfq.npiPos[index].note=note;}rfq.updatedAt=new Date().toISOString();await saveRFQ(rfq);renderRFQQuotesSection(rfq);renderRFQPOSection(rfq);closeNoteModal();toast("Note saved","ok");};
+
+/* ═══════════════════════════════════════════
+   ATTACHMENTS — Cloudinary based
+═══════════════════════════════════════════ */
+window.openAttachmentModal=function(mode,rfqId,supplierOrNull,lineIndex){
+  _attachMode=mode;_attachRfqId=rfqId;_attachSupplier=supplierOrNull;_attachLineIndex=lineIndex;
+  const label=mode==="quote"?"Quote Attachments — "+(supplierOrNull||"")+" / Line "+(lineIndex+1):"PO Attachments — Line "+(lineIndex+1);
+  document.getElementById("attachmentModalTitle").textContent=label;
+  document.getElementById("attachFileInput").value="";
+  renderAttachFileList();document.getElementById("attachmentModal").classList.add("active");
+};
+window.closeAttachmentModal=function(){document.getElementById("attachmentModal").classList.remove("active");};
+
+function _getAttachArr(){
+  const{rfq}=getRFQByModalIndex();if(!rfq)return[];
+  if(_attachMode==="quote"){return(rfq.suppliers[_attachSupplier]||[])[_attachLineIndex]?.attachments||[];}
+  else{return(rfq.npiPos[_attachLineIndex]||{}).attachments||[];}
+}
+function _setAttachArr(arr){
+  const{rfq}=getRFQByModalIndex();if(!rfq)return;
+  if(_attachMode==="quote"){if(rfq.suppliers[_attachSupplier]&&rfq.suppliers[_attachSupplier][_attachLineIndex])rfq.suppliers[_attachSupplier][_attachLineIndex].attachments=arr;}
+  else{if(rfq.npiPos[_attachLineIndex])rfq.npiPos[_attachLineIndex].attachments=arr;}
+}
+function qaCount(rfq,supplier,qi){return((rfq.suppliers[supplier]||[])[qi]?.attachments||[]).length;}
+function paCount(rfq,i){return(rfq.npiPos[i]?.attachments||[]).length;}
+
+function renderAttachFileList(){
+  const list=document.getElementById("attachFileList");list.innerHTML="";
+  const files=_getAttachArr();
+  if(!files.length){const msg=document.createElement("div");msg.className="small-muted";msg.textContent="No attachments yet.";list.appendChild(msg);return;}
+  files.forEach((f,i)=>{const item=document.createElement("div");item.className="attach-file-item";item.innerHTML='<span class="attach-file-icon">'+fileIconForName(f.name)+'</span><span class="attach-file-name" title="'+f.name+'">'+f.name+'</span><div class="attach-file-actions"><a href="'+f.url+'" target="_blank"><button class="secondary" style="padding:4px 10px;font-size:12px;">Download</button></a><button class="danger" style="padding:4px 10px;font-size:12px;" onclick="deleteAttachment('+i+')">Delete</button></div>';list.appendChild(item);});
+}
+window.onAttachFilesSelected=async function(input){
+  const files=Array.from(input.files);if(!files.length)return;
+  toast("Uploading "+files.length+" file(s)…");
+  const existing=[..._getAttachArr()];
+  try{
+    for(const file of files){const res=await uploadToCloudinary(file);existing.push({name:res.name,url:res.url,publicId:res.publicId});}
+    _setAttachArr(existing);
+    const{rfq}=getRFQByModalIndex();rfq.updatedAt=new Date().toISOString();
+    await saveRFQ(rfq);input.value="";renderAttachFileList();
+    if(_attachMode==="quote")renderRFQQuotesSection(rfq);else renderRFQPOSection(rfq);
+    toast("File(s) attached ✓","ok");
+  }catch(e){toast("Upload failed","warn");}
+};
+window.deleteAttachment=async function(fileIndex){
+  const files=[..._getAttachArr()];files.splice(fileIndex,1);_setAttachArr(files);
+  const{rfq}=getRFQByModalIndex();rfq.updatedAt=new Date().toISOString();
+  await saveRFQ(rfq);renderAttachFileList();
+  if(_attachMode==="quote")renderRFQQuotesSection(rfq);else renderRFQPOSection(rfq);
+  toast("Attachment deleted");
+};
+window.attachDragOver=function(e){e.preventDefault();document.getElementById("attachDropZone").classList.add("dragover");};
+window.attachDragLeave=function(){document.getElementById("attachDropZone").classList.remove("dragover");};
+window.attachDrop=async function(e){
+  e.preventDefault();document.getElementById("attachDropZone").classList.remove("dragover");
+  const files=Array.from(e.dataTransfer.files);if(!files.length)return;
+  toast("Uploading "+files.length+" file(s)…");
+  const existing=[..._getAttachArr()];
+  try{
+    for(const file of files){const res=await uploadToCloudinary(file);existing.push({name:res.name,url:res.url,publicId:res.publicId});}
+    _setAttachArr(existing);const{rfq}=getRFQByModalIndex();rfq.updatedAt=new Date().toISOString();
+    await saveRFQ(rfq);renderAttachFileList();
+    if(_attachMode==="quote")renderRFQQuotesSection(rfq);else renderRFQPOSection(rfq);
+    toast("File(s) attached ✓","ok");
+  }catch(e){toast("Upload failed","warn");}
+};
+
+/* ═══════════════════════════════════════════
+   EDIT LINE MODAL
+═══════════════════════════════════════════ */
+window.openEditLineModal=function(type,supplierName,lineIndex){
+  const{rfq}=getRFQByModalIndex();
+  document.getElementById("editLineType").value=type;document.getElementById("editLineSupplier").value=supplierName||"";document.getElementById("editLineIndex").value=String(lineIndex);
+  if(type==="quote"){document.getElementById("editLineModalTitle").textContent="Edit Quote Line — "+supplierName+" / Line "+(lineIndex+1);document.getElementById("editLineQuoteFields").style.display="";document.getElementById("editLinePoFields").style.display="none";const q=(rfq.suppliers[supplierName]||[])[lineIndex]||{};document.getElementById("el-moq").value=q.moq||"";document.getElementById("el-price").value=q.price||"";document.getElementById("el-lead").value=q.leadTime||"";document.getElementById("el-incoterm").value=q.incoterm||"";}
+  else{document.getElementById("editLineModalTitle").textContent="Edit PO Line — Line "+(lineIndex+1);document.getElementById("editLineQuoteFields").style.display="none";document.getElementById("editLinePoFields").style.display="";const po=rfq.npiPos[lineIndex]||{};const suppliers=Object.keys(rfq.suppliers||{});const poSupSel=document.getElementById("el-po-supplier");poSupSel.innerHTML=suppliers.map(s=>'<option value="'+s+'">'+s+'</option>').join("");poSupSel.value=po.supplier||"";document.getElementById("el-po-number").value=po.poNumber||"";document.getElementById("el-po-qty").value=po.qty||"";document.getElementById("el-po-price").value=po.price||"";document.getElementById("el-po-date").value=po.poDate||"";document.getElementById("el-po-eta").value=po.eta||"";document.getElementById("el-po-received").checked=!!po.received;}
+  document.getElementById("editLineModal").classList.add("active");
+};
+window.closeEditLineModal=function(){document.getElementById("editLineModal").classList.remove("active");};
+window.saveEditedLine=async function(btn){
+  pulseButton(btn);const{rfq}=getRFQByModalIndex();
+  const type=document.getElementById("editLineType").value;const supplier=document.getElementById("editLineSupplier").value;const lineIndex=Number(document.getElementById("editLineIndex").value);
+  if(type==="quote"){const moq=document.getElementById("el-moq").value.trim();const price=document.getElementById("el-price").value.trim();const leadTime=document.getElementById("el-lead").value.trim();const incoterm=document.getElementById("el-incoterm").value.trim();if(!moq||!price||!leadTime||!incoterm)return toast("Please fill all quote fields.");const q=rfq.suppliers[supplier][lineIndex];q.moq=moq;q.price=price;q.leadTime=leadTime;q.incoterm=incoterm;}
+  else{const poSupplier=document.getElementById("el-po-supplier").value;const poNumber=document.getElementById("el-po-number").value.trim();const qty=document.getElementById("el-po-qty").value.trim();const price=document.getElementById("el-po-price").value.trim();const poDate=document.getElementById("el-po-date").value;const eta=document.getElementById("el-po-eta").value;const received=document.getElementById("el-po-received").checked;if(!poSupplier||!poNumber||!qty||!price||!poDate||!eta)return toast("Please fill all PO fields.");const po=rfq.npiPos[lineIndex];po.supplier=poSupplier;po.poNumber=poNumber;po.qty=qty;po.price=price;po.poDate=poDate;po.eta=eta;po.received=received;}
+  rfq.updatedAt=new Date().toISOString();await saveRFQ(rfq);
+  if(type==="quote")renderRFQQuotesSection(rfq);else renderRFQPOSection(rfq);
+  closeEditLineModal();toast("Line updated","ok");
+};
+
+/* ═══════════════════════════════════════════
+   QUOTES SECTION
+═══════════════════════════════════════════ */
+function renderRFQQuotesSection(rfq){
+  const suppliers=Object.keys(rfq.suppliers||{});
+  const preview=document.getElementById("rfqQuotesSection");const formBody=document.getElementById("quotesBody");
+  if(!suppliers.length){preview.innerHTML='<div class="small-muted">No supplier quotes yet.</div>';formBody.innerHTML='<div class="small-muted">Add associated suppliers first.</div>';return;}
+  preview.innerHTML=suppliers.map(supplier=>{
+    const lines=rfq.suppliers[supplier]||[];
+    return '<div class="panel" style="padding:12px;margin-bottom:10px;"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><h5 style="font-size:1rem;">'+supplier+'</h5><span class="small-muted">'+lines.length+' line(s)</span></div>'
+      +(lines.length?'<table class="quotes-table"><thead><tr><th>MOQ</th><th>UNIT PRICE (USD)</th><th>LEAD TIME (WEEKS)</th><th>INCOTERM</th><th>Notes</th><th>Files</th><th>Action</th></tr></thead><tbody>'
+        +lines.map((q,qi)=>{const cnt=qaCount(rfq,supplier,qi);return '<tr><td>'+q.moq+'</td><td>'+q.price+'</td><td>'+q.leadTime+'</td><td>'+q.incoterm+'</td><td><button class="note-btn" onclick="openNoteModal(\'quote\',\''+supplier+'\','+qi+')">?</button></td><td><button class="attach-btn'+(cnt?' has-files':'')+'" title="'+(cnt?cnt+' file(s)':'Attach files')+'" onclick="openAttachmentModal(\'quote\',\''+rfq.id+'\',\''+supplier+'\','+qi+')" style="position:relative;">📧'+attachBadgeHtml(cnt)+'</button></td><td><div style="display:flex;gap:4px;"><button class="row-action-btn edit" onclick="openEditLineModal(\'quote\',\''+supplier+'\','+qi+')">✏️</button><button class="row-action-btn del" onclick="deleteQuoteLineFromModal(\''+supplier+'\','+qi+')">🗑️</button></div></td></tr>';}).join("")
+        +'</tbody></table>':'<div class="small-muted" style="margin-top:8px;">No quote lines yet.</div>')
+      +'</div>';
+  }).join("");
+  formBody.innerHTML=suppliers.map(supplier=>'<div class="panel" style="padding:12px;margin-bottom:10px;"><h5 style="font-size:1rem;margin-bottom:8px;">Add line to '+supplier+'</h5><div class="add-quote-line"><input type="text" placeholder="MOQ" id="q-moq-'+sanitizeId(supplier)+'"/><input type="text" placeholder="UNIT PRICE (USD)" id="q-price-'+sanitizeId(supplier)+'"/><input type="text" placeholder="LEAD TIME (WEEKS)" id="q-lead-'+sanitizeId(supplier)+'"/><input type="text" placeholder="INCOTERM" id="q-incoterm-'+sanitizeId(supplier)+'"/><button class="note-btn" onclick="openPendingQuoteNote(\''+supplier+'\')">?</button><button class="primary" onclick="addQuoteLineFromModal(\''+supplier+'\',this)">Add Line</button></div></div>').join("");
+}
+const pendingQuoteNotes={};
+window.openPendingQuoteNote=function(supplier){const t=prompt("Note for next quote line ("+supplier+"):",pendingQuoteNotes[supplier]||"");if(t!==null)pendingQuoteNotes[supplier]=t;};
+window.addQuoteLineFromModal=async function(supplierName,btn){pulseButton(btn);const{rfq}=getRFQByModalIndex();const sid=sanitizeId(supplierName);const moq=document.getElementById("q-moq-"+sid).value.trim();const price=document.getElementById("q-price-"+sid).value.trim();const leadTime=document.getElementById("q-lead-"+sid).value.trim();const incoterm=document.getElementById("q-incoterm-"+sid).value.trim();if(!moq||!price||!leadTime||!incoterm)return toast("Please fill MOQ, PRICE, LEAD TIME and INCOTERM.");if(!rfq.suppliers[supplierName])rfq.suppliers[supplierName]=[];rfq.suppliers[supplierName].push({moq,price,leadTime,incoterm,note:pendingQuoteNotes[supplierName]||"",attachments:[]});pendingQuoteNotes[supplierName]="";rfq.updatedAt=new Date().toISOString();await saveRFQ(rfq);renderRFQQuotesSection(rfq);toast("Quote line added","ok");};
+window.deleteQuoteLineFromModal=async function(supplierName,quoteIndex){const{rfq}=getRFQByModalIndex();rfq.suppliers[supplierName].splice(quoteIndex,1);rfq.updatedAt=new Date().toISOString();await saveRFQ(rfq);renderRFQQuotesSection(rfq);toast("Quote line deleted");};
+
+/* ═══════════════════════════════════════════
+   PO SECTION
+═══════════════════════════════════════════ */
+let pendingPoNote="";
+window.openPendingPoNote=function(){const t=prompt("Note for next PO line:",pendingPoNote||"");if(t!==null)pendingPoNote=t;};
+function renderRFQPOSection(rfq){
+  if(!Array.isArray(rfq.npiPos))rfq.npiPos=[];
+  const suppliers=Object.keys(rfq.suppliers||{});
+  const preview=document.getElementById("rfqPoSection");const formBody=document.getElementById("poBody");
+  preview.innerHTML=rfq.npiPos.length
+    ?'<table class="po-table"><thead><tr><th>SUPPLIER</th><th>PO NUMBER</th><th>QTY</th><th>UNIT PRICE (USD)</th><th>PO DATE</th><th>ETA</th><th>RECEIVED</th><th>NOTES</th><th>FILES</th><th>ACTION</th></tr></thead><tbody>'
+      +rfq.npiPos.map((po,i)=>{const cnt=paCount(rfq,i);const receivedCell=po.received?'<span class="received-check">✔</span>':'<span style="color:var(--muted);">—</span>';const rowClass=po.received?' class="po-received"':'';return '<tr'+rowClass+'><td>'+po.supplier+'</td><td>'+po.poNumber+'</td><td>'+po.qty+'</td><td>'+po.price+'</td><td>'+po.poDate+'</td><td>'+po.eta+'</td><td>'+receivedCell+'</td><td><button class="note-btn" onclick="openNoteModal(\'po\',\'\','+i+')">?</button></td><td><button class="attach-btn'+(cnt?' has-files':'')+'" title="'+(cnt?cnt+' file(s)':'Attach files')+'" onclick="openAttachmentModal(\'po\',\''+rfq.id+'\',null,'+i+')" style="position:relative;">📧'+attachBadgeHtml(cnt)+'</button></td><td><div style="display:flex;gap:4px;"><button class="row-action-btn edit" onclick="openEditLineModal(\'po\',\'\','+i+')">✏️</button><button class="row-action-btn del" onclick="deletePOFromModal('+i+')">🗑️</button></div></td></tr>';}).join("")
+      +'</tbody></table>'
+    :'<div class="small-muted">No NPI PO entries yet.</div>';
+  formBody.innerHTML='<div class="add-po-line"><select id="po-supplier-input"><option value="">SUPPLIER</option>'+suppliers.map(s=>'<option value="'+s+'">'+s+'</option>').join("")+'</select><input type="text" id="po-number-input" placeholder="PO NUMBER"/><input type="text" id="po-qty-input" placeholder="QTY"/><input type="text" id="po-price-input" placeholder="UNIT PRICE (USD)"/><div class="date-field"><label style="margin-bottom:0">PO DATE</label><div class="date-input-wrap"><input type="date" id="po-date-input"/><span class="cal-icon">📅</span></div></div><div class="date-field"><label style="margin-bottom:0">ETA</label><div class="date-input-wrap"><input type="date" id="po-eta-input"/><span class="cal-icon">📅</span></div></div><label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink);margin:0;"><input type="checkbox" id="po-received-input"/> received</label><button class="note-btn" onclick="openPendingPoNote()">?</button><button class="primary" onclick="addPOToRFQModal(this)">Add PO</button></div>';
+}
+window.addPOToRFQModal=async function(btn){pulseButton(btn);const{rfq}=getRFQByModalIndex();if(!Array.isArray(rfq.npiPos))rfq.npiPos=[];const supplier=document.getElementById("po-supplier-input").value;const poNumber=document.getElementById("po-number-input").value.trim();const qty=document.getElementById("po-qty-input").value.trim();const price=document.getElementById("po-price-input").value.trim();const poDate=document.getElementById("po-date-input").value;const eta=document.getElementById("po-eta-input").value;const received=document.getElementById("po-received-input").checked;if(!supplier||!poNumber||!qty||!price||!poDate||!eta)return toast("Please fill all PO fields.");rfq.npiPos.push({supplier,poNumber,qty,price,poDate,eta,received,note:pendingPoNote||"",attachments:[]});pendingPoNote="";rfq.updatedAt=new Date().toISOString();await saveRFQ(rfq);renderRFQPOSection(rfq);toast("PO added","ok");};
+window.deletePOFromModal=async function(poIndex){const{rfq}=getRFQByModalIndex();rfq.npiPos.splice(poIndex,1);rfq.updatedAt=new Date().toISOString();await saveRFQ(rfq);renderRFQPOSection(rfq);toast("PO deleted");};
+
+window.saveRFQFromModal=async function(btn){
+  pulseButton(btn);const{rfq}=getRFQByModalIndex();
+  addPNFromInput("edit");if(pnState.edit.length===0)return toast("At least one Part Number is required.");
+  const newCustomer=document.getElementById("editRFQCustomer").value;const newProject=document.getElementById("editRFQProject").value;
+  if(!newCustomer||!newProject)return toast("Customer and Project are required.");
+  rfq.customer=newCustomer;rfq.project=newProject;
+  rfq.pns=[...pnState.edit];rfq.pn=pnState.edit[0]||"";
+  rfq.sapPn=document.getElementById("editRFQSapPN").value.trim();rfq.eau=document.getElementById("editRFQEAU").value.trim();
+  rfq.pnDescription=document.getElementById("editRFQPNDescription").value.trim();rfq.processNeeded=document.getElementById("editRFQProcessNeeded").value.trim();
+  rfq.status=document.getElementById("editRFQStatus").value;rfq.updatedAt=new Date().toISOString();
+  await saveRFQ(rfq);closeRFQModal();toast("Changes saved ✓","ok");
+};
+window.deleteRFQFromModal=async function(){
+  const{rfq}=getRFQByModalIndex();if(!confirm('Delete RFQ "'+pnDisplay(rfq)+'"?'))return;
+  await deleteRFQDoc(rfq.id);closeRFQModal();toast("RFQ deleted");
+};
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+function initializeUI(){
+  populateNewCustomer();populateNewProject("");
+  populateFilterCustomer();populateFilterProject("");
+  updateSupplierFilter();renderNewDrawingUI();renderNewCustomerLogoUI();
+}
+initializeUI();
+</script>
+</body>
+</html>
