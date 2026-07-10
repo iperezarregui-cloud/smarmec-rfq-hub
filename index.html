@@ -164,6 +164,7 @@
     #addServiceModal{z-index:3100!important;}#addServiceModal .modal{max-width:420px;}
     #editCustomerModal{z-index:3100!important;}#editCustomerModal .modal{max-width:480px;}
   </style>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
 
@@ -494,6 +495,13 @@ const firebaseConfig = {
 const CLOUD_NAME = "zeveio1w";
 const UPLOAD_PRESET = "rfq_hub_uploads";
 
+// ── EMAILJS CONFIG ──
+const EMAILJS_SERVICE_ID  = "YOUR_SERVICE_ID";   // reemplazar tras configurar EmailJS
+const EMAILJS_TEMPLATE_ID = "YOUR_TEMPLATE_ID";  // reemplazar tras configurar EmailJS
+const EMAILJS_PUBLIC_KEY  = "YOUR_PUBLIC_KEY";   // reemplazar tras configurar EmailJS
+const PURCHASING_EMAIL    = "compras@ejemplo.com"; // reemplazar con el email real
+emailjs.init(EMAILJS_PUBLIC_KEY);
+
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
 const db = getFirestore(fbApp);
@@ -667,6 +675,27 @@ async function downloadFile(url, filename) {
   }
 }
 window.downloadFile = downloadFile;
+async function sendRFQNotification(rfq) {
+  try {
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_email:        PURCHASING_EMAIL,
+      rfq_id:          rfq.id,
+      customer:        rfq.customer,
+      project:         rfq.project,
+      part_numbers:    (rfq.pns || [rfq.pn]).filter(Boolean).join(", ") || "—",
+      pn_description:  rfq.pnDescription || "—",
+      service_needed:  rfq.processNeeded || "—",
+      sap_pn:          rfq.sapPn || "—",
+      eau:             rfq.eau || "—",
+      status:          rfq.status,
+      created_at:      new Date(rfq.createdAt).toLocaleString("es-ES"),
+    });
+    toast("📧 Email enviado a compras", "ok");
+  } catch (e) {
+    console.error("EmailJS error:", e);
+    toast("RFQ creada (email no enviado)", "warn");
+  }
+}
 function getRFQByModalIndex(){const id=document.getElementById("editRFQIndex").value;const idx=data.rfqs.findIndex(r=>String(r.id)===String(id));return{idx,rfq:data.rfqs[idx]};}
 
 /* ═══════════════════════════════════════════
@@ -928,6 +957,7 @@ window.createNewRFQ=async function(btn){
   const newId=String(Date.now());const nowIso=new Date().toISOString();
   const rfq={id:newId,customer,project,pns:[...pnState.new],pn:pnState.new[0]||"",sapPn,eau,pnDescription,processNeeded,status,drawings:[...newDrawingsTemp],suppliers:{},npiPos:[],createdAt:nowIso,updatedAt:nowIso};
   await saveRFQ(rfq);
+  sendRFQNotification(rfq).catch(()=>{});
   document.getElementById("newCustomer").value="";populateNewProject("");
   document.getElementById("newSapPN").value="";document.getElementById("newEAU").value="";
   document.getElementById("newPNDescription").value="";document.getElementById("newProcessNeeded").value="";
