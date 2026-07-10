@@ -496,10 +496,10 @@ const CLOUD_NAME = "zeveio1w";
 const UPLOAD_PRESET = "rfq_hub_uploads";
 
 // ── EMAILJS CONFIG ──
-const EMAILJS_SERVICE_ID  = "YOUR_SERVICE_ID";   // reemplazar tras configurar EmailJS
-const EMAILJS_TEMPLATE_ID = "YOUR_TEMPLATE_ID";  // reemplazar tras configurar EmailJS
-const EMAILJS_PUBLIC_KEY  = "YOUR_PUBLIC_KEY";   // reemplazar tras configurar EmailJS
-const PURCHASING_EMAIL    = "compras@ejemplo.com"; // reemplazar con el email real
+const EMAILJS_SERVICE_ID  = "service_fnuv2zi";
+const EMAILJS_TEMPLATE_ID = "template_ktelm5a";
+const EMAILJS_PUBLIC_KEY  = "EGM__VnzD4jpT8KDs";
+const PURCHASING_EMAIL    = "zuraidah.mohamed@smarmec.com"; // el usuario sustituirá este email
 emailjs.init(EMAILJS_PUBLIC_KEY);
 
 const fbApp = initializeApp(firebaseConfig);
@@ -957,7 +957,7 @@ window.createNewRFQ=async function(btn){
   const newId=String(Date.now());const nowIso=new Date().toISOString();
   const rfq={id:newId,customer,project,pns:[...pnState.new],pn:pnState.new[0]||"",sapPn,eau,pnDescription,processNeeded,status,drawings:[...newDrawingsTemp],suppliers:{},npiPos:[],createdAt:nowIso,updatedAt:nowIso};
   await saveRFQ(rfq);
-  sendRFQNotification(rfq).catch(()=>{});
+  if (rfq.status === "PENDING") sendRFQNotification(rfq).catch(()=>{});
   document.getElementById("newCustomer").value="";populateNewProject("");
   document.getElementById("newSapPN").value="";document.getElementById("newEAU").value="";
   document.getElementById("newPNDescription").value="";document.getElementById("newProcessNeeded").value="";
